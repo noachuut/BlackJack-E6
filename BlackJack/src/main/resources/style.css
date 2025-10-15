@@ -1,0 +1,113 @@
+/* Fond vert casino texturé/nuancé */
+.login-root {
+    -fx-background-color:
+            linear-gradient(to bottom, #0d3b2a 0%, #0f3c2d 35%, #0e3427 100%);
+}
+
+/* Titre */
+.login-title {
+    -fx-font-family: "Segoe UI Semibold", "Inter", "Arial";
+    -fx-font-size: 56px;
+    -fx-text-fill: #F0E9D8; /* crème */
+    -fx-letter-spacing: 1.5px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 18, 0.3, 0, 3);
+    -fx-padding: 6 0 4 0;
+}
+
+/* Carte formulaire crème, arrondis */
+.login-card {
+    -fx-background-color: rgba(248, 239, 224, 0.92); /* crème */
+    -fx-background-radius: 18;
+    -fx-border-radius: 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 22, 0.2, 0, 10);
+}
+
+/* Inputs crème */
+.input-cream, .text-field.input-cream, .password-field.input-cream {
+    -fx-background-radius: 16;
+    -fx-background-color: #fbf3e6;
+    -fx-padding: 12 14;
+    -fx-font-size: 15px;
+    -fx-text-fill: #2b3a33;
+    -fx-prompt-text-fill: rgba(43,58,51,0.45);
+    -fx-border-color: rgba(0,0,0,0.06);
+    -fx-border-radius: 16;
+}
+.input-cream:focused {
+    -fx-effect: dropshadow(gaussian, rgba(22,160,133,0.45), 16, 0.3, 0, 0);
+    -fx-border-color: rgba(22,160,133,0.55);
+}
+
+/* Bouton œil */
+.eye-toggle {
+    -fx-background-radius: 12;
+    -fx-background-color: #fbf3e6;
+    -fx-padding: 0 12;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(0,0,0,0.06);
+    -fx-border-radius: 12;
+}
+.eye-toggle:hover {
+    -fx-background-color: #f7ecd9;
+}
+
+/* Boutons */
+.btn-primary {
+    -fx-background-radius: 14;
+    -fx-padding: 10 18;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+    -fx-background-color: linear-gradient(to bottom, #22c1a0, #14a07d);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0.2, 0, 2);
+}
+.btn-primary:hover { -fx-background-color: linear-gradient(to bottom, #27d3af, #15aa86); }
+.btn-primary:pressed { -fx-background-color: linear-gradient(to bottom, #159a7a, #0f7c61); }
+.btn-soft { -fx-background-color: linear-gradient(to bottom, #1fc79e, #159e7a); }
+
+.login-msg {
+    -fx-text-fill: #c75050;
+    -fx-font-size: 13px;
+    -fx-padding: 4 6 0 6;
+}
+
+/* Inputs un peu plus hauts + ombre douce */
+.input-cream, .text-field.input-cream, .password-field.input-cream {
+    -fx-background-radius: 16;
+    -fx-background-color: #fbf3e6;
+    -fx-padding: 12 14;                 /* hauteur ~44–46px */
+    -fx-font-size: 15px;
+    -fx-border-color: rgba(0,0,0,0.06);
+    -fx-border-radius: 16;
+    -fx-effect: innershadow(gaussian, rgba(0,0,0,0.10), 6, 0.3, 0, 2);
+}
+
+/* Œil plus grand, cliquable, centré verticalement */
+.eye-toggle {
+    -fx-background-color: #fbf3e6;
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(0,0,0,0.08);
+    -fx-border-radius: 12;
+    -fx-padding: 0;              /* pas de padding interne, on contrôle la taille via prefSize */
+    -fx-cursor: hand;
+    -fx-alignment: CENTER;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 6, 0.2, 0, 1);
+}
+.eye-toggle:hover { -fx-background-color: #f7ecd9; }
+
+/* Rangée de boutons séparée du formulaire */
+.btn-row {
+    -fx-padding: 14 0 0 0;       /* espace au-dessus de la rangée */
+}
+
+/* Boutons */
+.btn-primary {
+    -fx-background-radius: 14;
+    -fx-padding: 10 18;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-text-fill: white;
+    -fx-background-color: linear-gradient(to bottom, #22c1a0, #14a07d);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0.2, 0, 2);
+}
+.btn-soft { -fx-background-color: linear-gradient(to bottom, #1fc79e, #159e7a); }

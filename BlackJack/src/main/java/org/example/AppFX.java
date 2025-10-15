@@ -53,8 +53,18 @@ public class AppFX extends Application {
     private Scene loginScene, betScene, gameScene;
     private Canvas gameCanvas;
     private Button btnHit, btnStay, btnNewRound, btnChangeBet;
-
     private Image tapisImg;
+
+    // rendu cartes
+    private static final double CARD_W = 110;
+    private static final double CARD_H = 160;
+    private static final double CARD_SPACING_FACTOR = 0.35; // 0.35 = cartes bien collées (65% overlap)
+
+    // Éditeur de mise inline
+    private HBox betEditor;
+    private Spinner<Integer> spBet;
+    private Button btnApplyBet, btnCloseBet;
+
 
     // ====== LAUNCH ======
     public static void main(String[] args) { launch(args); }
@@ -87,6 +97,32 @@ public class AppFX extends Application {
     }
 
     // === SCENES ===
+    private void drawHand(GraphicsContext g, List<Card> hand, double x0, double y0) {
+        double dx = CARD_W * CARD_SPACING_FACTOR;
+        // dessiner de la première à la dernière pour que la DERNIÈRE soit “au-dessus”
+        for (int i = 0; i < hand.size(); i++) {
+            Image im = new Image(Objects.requireNonNull(getClass().getResourceAsStream(hand.get(i).path())));
+            double x = x0 + i * dx;
+            g.drawImage(im, x, y0, CARD_W, CARD_H);
+        }
+    }
+
+    private void drawDealer(GraphicsContext g, double x0, double y0, boolean revealed) {
+        double dx = CARD_W * CARD_SPACING_FACTOR;
+        Image back = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/card/BACK.png")));
+
+        if (!revealed) {
+            // 1) cartes visibles du croupier décalées d’un pas
+            drawHand(g, dealer, x0 + dx, y0);
+            // 2) la carte cachée PAR-DESSUS à gauche
+            g.drawImage(back, x0, y0, CARD_W, CARD_H);
+        } else {
+            // carte cachée révélée + reste des cartes
+            Image hid = new Image(Objects.requireNonNull(getClass().getResourceAsStream(hiddenCard.path())));
+            g.drawImage(hid, x0, y0, CARD_W, CARD_H);
+            drawHand(g, dealer, x0 + dx, y0);
+        }
+    }
 
     private Scene buildLoginScene() {
         BorderPane root = new BorderPane();
@@ -232,6 +268,8 @@ public class AppFX extends Application {
 
 
     private Scene buildBetScene() {
+
+
         int balance = getBalance(userId);
         int step=50, min=250, max=Math.max(min, balance);
         Spinner<Integer> sp = new Spinner<>(min, max, Math.min(Math.max(currentBet, min), max), step);
@@ -242,8 +280,10 @@ public class AppFX extends Application {
         Label info = new Label("Choisis ta mise (XPF). Solde: " + balance + " XPF");
 
         VBox root = new VBox(12, info, sp, btnStart);
+        root.getStyleClass().add("app-root");
         root.setAlignment(Pos.CENTER);
         root.setPadding(new Insets(20));
+
 
         btnStart.setOnAction(ev -> {
             currentBet = sp.getValue();
@@ -265,6 +305,7 @@ public class AppFX extends Application {
 
     private Scene buildGameScene() {
         BorderPane root = new BorderPane();
+        root.getStyleClass().add("app-root");
 
         // Canvas jeu
         gameCanvas = new Canvas(600, 540); // zone de jeu
@@ -291,20 +332,49 @@ public class AppFX extends Application {
         bar.setPadding(new Insets(8));
         root.setBottom(bar);
 
+        spBet = new Spinner<>();
+        spBet.setEditable(true);
+        spBet.setPrefWidth(120);
+
+// n'accepter que des chiffres dans l'éditeur
+        spBet.getEditor().setTextFormatter(new TextFormatter<>(c -> {
+            if (c.getText().matches("\\d*")) return c;
+            return null;
+        }));
+
+        btnApplyBet = new Button("OK");
+        btnApplyBet.getStyleClass().add("btn-primary");
+
+        btnCloseBet = new Button("✕");
+        btnCloseBet.getStyleClass().add("btn-close-small");
+
+        Label lbl = new Label("Mise (XPF)");
+        lbl.setTextFill(Color.WHITE);
+
+        betEditor = new HBox(8, lbl, spBet, btnApplyBet, btnCloseBet);
+        betEditor.setAlignment(Pos.CENTER);
+        betEditor.getStyleClass().add("bet-editor");
+        betEditor.setVisible(false);          // <— caché au départ
+
+// Empile l'éditeur AU-DESSUS de la barre de boutons
+        VBox bottom = new VBox(10, betEditor, new HBox(10, btnChangeBet, btnHit, btnStay, btnNewRound));
+        bottom.setAlignment(Pos.CENTER);
+        bottom.setPadding(new Insets(8));
+        root.setBottom(bottom);
+
         // Actions
         btnHit.setOnAction(e -> {
             // tirer une carte pour joueur
             Card c = deck.remove(deck.size()-1);
             player.add(c);
 
-            int p = computeTotal(player);
-            if (p >= 21) btnHit.setDisable(true);
-
             // Si le joueur dépasse 21, on clôt immédiatement la manche
-            if (p > 21) {
+            int p = computeTotal(player);
+            if (p >= 21) {
                 btnHit.setDisable(true);
-                btnStay.setDisable(true);   // ceci force l’affichage de la carte cachée (voir redraw)
-                settleAndFinish();          // calcule le payout + message
+                btnStay.setDisable(true);
+                dealerPlay();       // si 21 après tirage, on passe au croupier
+                settleAndFinish();
                 redrawGame();
                 return;
             }
@@ -342,19 +412,11 @@ public class AppFX extends Application {
         });
 
         btnChangeBet.setOnAction(e -> {
-            // petit spinner inline (pas de nouvelle fenêtre)
-            int balance = getBalance(userId);
-            int step=50, min=250, max=Math.max(min, balance);
-            Spinner<Integer> sp = new Spinner<>(min, max, currentBet, step);
-            Dialog<Integer> dlg = new Dialog<>();
-            dlg.setTitle("Changer la mise");
-            dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-            dlg.getDialogPane().setContent(new VBox(10, new Label("Mise (XPF)"), sp));
-            dlg.setResultConverter(bt -> bt==ButtonType.OK ? sp.getValue() : null);
-            dlg.showAndWait().ifPresent(v -> {
-                currentBet = v;
-                new Alert(Alert.AlertType.INFORMATION, "Mise fixée à " + currentBet + " XPF.").showAndWait();
-            });
+            if (betEditor.isVisible()) {
+                betEditor.setVisible(false);
+                return;
+            }
+            openBetEditor();  // prépare bornes/min/max et affiche
         });
 
         Scene sc = new Scene(root, 600, 600);
@@ -368,6 +430,52 @@ public class AppFX extends Application {
     }
 
     // === LOGIQUE JEU ===
+    private static final int BET_STEP = 250;
+    private static final int BET_MIN  = 250;
+
+    private void openBetEditor() {
+        int balance = getBalance(userId);
+        int max = Math.max(BET_MIN, balance);
+        int start = Math.min(Math.max(currentBet, BET_MIN), max);
+
+        // value factory avec pas=250
+        SpinnerValueFactory.IntegerSpinnerValueFactory vf =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(BET_MIN, max, start, BET_STEP);
+        spBet.setValueFactory(vf);
+        spBet.getEditor().setText(String.valueOf(start));
+
+        betEditor.setVisible(true);
+        spBet.requestFocus();
+
+        // Enter = appliquer
+        spBet.getEditor().setOnAction(ev -> applyBetEditor());
+        btnApplyBet.setOnAction(ev -> applyBetEditor());
+        btnCloseBet.setOnAction(ev -> betEditor.setVisible(false));
+    }
+
+    private void applyBetEditor() {
+        // Récup texte, clamp et aligne sur le pas de 250
+        String raw = spBet.getEditor().getText().replaceAll("\\D", "");
+        if (raw.isEmpty()) { return; }
+        int val = Integer.parseInt(raw);
+
+        int balance = getBalance(userId);
+        int max = Math.max(BET_MIN, balance);
+
+        // aligne sur pas de 250, borne min/max
+        val = (val / BET_STEP) * BET_STEP;
+        if (val < BET_MIN) val = BET_MIN;
+        if (val > max)     val = (max / BET_STEP) * BET_STEP;
+
+        spBet.getValueFactory().setValue(val);
+        currentBet = val;
+
+        // petit feedback optionnel via le bandeau résultat
+        resultMsg = "Mise fixée à " + currentBet + " XPF";
+        roundSettled = false;  // ne bloque pas les boutons
+        betEditor.setVisible(false);
+        redrawGame();
+    }
 
     private void startRound() {
         roundSettled = false;
@@ -389,6 +497,17 @@ public class AppFX extends Application {
         dealer.add(deck.remove(deck.size()-1));
         player.add(deck.remove(deck.size()-1));
         player.add(deck.remove(deck.size()-1));
+
+        int pv = computeTotal(player);
+        boolean playerBJ = (pv == 21 && player.size() == 2);
+        if (playerBJ) {
+            // désactiver les actions joueur
+            btnHit.setDisable(true);
+            btnStay.setDisable(true);   // => ta vue considère "revealed = btnStay.isDisable()"
+            // ne pas faire dealerPlay(), on compare juste les 2 mains initiales
+            settleAndFinish();          // gère payout 3:2 / push si dealer BJ
+            redrawGame();
+        }
     }
 
     private void dealerPlay() {
@@ -419,29 +538,42 @@ public class AppFX extends Application {
         int p = computeTotal(player);
         int d = computeDealerTotal(true);
 
-        boolean playerBJ = (p == 21 && player.size() == 2);
-        boolean dealerBJ = (d == 21 && hiddenCard != null && dealer.size() == 1); // 2 cartes 21 côté croupier
+        boolean playerBJ = (p == 21 && player.size() == 2);                   // BJ naturel
+        boolean dealerBJ = (d == 21 && hiddenCard != null && dealer.size()==1);// 2 cartes côté croupier
 
         String result;
-        int payout;
+        int payout; // crédit final (mise déjà débitée au début)
 
         if (p > 21) {
             result = "LOSE"; payout = 0;
+
         } else if (playerBJ && dealerBJ) {
-            result = "PUSH"; payout = currentBet;               // double blackjack = égalité
-        } else if (playerBJ) {
-            result = "WIN";  payout = currentBet * 5 / 2;       // 3:2 → 2.5 × mise créditée
-        } else if (d > 21) {
-            result = "WIN";  payout = currentBet * 2;           // win normal
-        } else if (d == p) {
+            // Double blackjack = push
             result = "PUSH"; payout = currentBet;
-        } else if (d > p) {
+
+        } else if (playerBJ) {
+            // BJ joueur bat n'importe quel 21 non-BJ
+            result = "WIN";  payout = (int)Math.round(currentBet * 2.5); // 3:2
+
+        } else if (dealerBJ) {
+            // BJ croupier bat 21 du joueur non-BJ
             result = "LOSE"; payout = 0;
-        } else {
+
+        } else if (d > 21) {
             result = "WIN";  payout = currentBet * 2;
+
+        } else if (p == d) {
+            // égalité simple (aucun BJ, les BJ ont été traités plus haut)
+            result = "PUSH"; payout = currentBet;
+
+        } else if (p > d) {
+            result = "WIN";  payout = currentBet * 2;
+
+        } else {
+            result = "LOSE"; payout = 0;
         }
 
-        // Message utilisateur
+        // message
         if ("WIN".equals(result)) {
             resultMsg = playerBJ ? "Blackjack ! Tu as gagné " : "Tu as gagné ";
         } else if ("LOSE".equals(result)) {
@@ -457,6 +589,7 @@ public class AppFX extends Application {
         btnNewRound.setDisable(false);
         btnChangeBet.setDisable(false);
     }
+
 
     private void drawResultBanner(GraphicsContext g, double W, double H) {
         if (!roundSettled || resultMsg == null || resultMsg.isEmpty()) return;
@@ -491,23 +624,12 @@ public class AppFX extends Application {
         // cartes (taille cohérente)
         double cw = 110, ch = 160;
         // croupier
-        // hidden
-        Image back = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/card/BACK.png")));
-        Image imgHid = back;
-        boolean revealed = (btnStay.isDisable()); // après "Rester", on a désactivé
-        if (revealed) imgHid = new Image(Objects.requireNonNull(getClass().getResourceAsStream(hiddenCard.path())));
-        g.drawImage(imgHid, 20, 20, cw, ch);
+        // dealer
+        boolean revealed = btnStay.isDisable(); // comme tu faisais
+        drawDealer(g, /*x0*/ 20, /*y0*/ 20, revealed);
 
-        for (int i=0;i<dealer.size();i++) {
-            Image im = new Image(Objects.requireNonNull(getClass().getResourceAsStream(dealer.get(i).path())));
-            g.drawImage(im, 25+cw + (cw+5)*i, 20, cw, ch);
-        }
-
-        // joueur
-        for (int i=0;i<player.size();i++) {
-            Image im = new Image(Objects.requireNonNull(getClass().getResourceAsStream(player.get(i).path())));
-            g.drawImage(im, 20 + (cw+5)*i, 320, cw, ch);
-        }
+// joueur
+        drawHand(g, player, 20, 320);            // cartes très proches comme sur ton image
 
         // points
         g.setFill(Color.WHITE);

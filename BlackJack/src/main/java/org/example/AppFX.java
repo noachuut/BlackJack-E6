@@ -107,6 +107,10 @@ public class AppFX extends Application {
         }
     }
 
+    private boolean hasPlayerNaturalBJ() {
+        return computeTotal(player) == 21 && player.size() == 2;
+    }
+
     private void drawDealer(GraphicsContext g, double x0, double y0, boolean revealed) {
         double dx = CARD_W * CARD_SPACING_FACTOR;
         Image back = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/card/BACK.png")));
@@ -296,11 +300,27 @@ public class AppFX extends Application {
             gameScene = buildGameScene();
             switchScene(gameScene);
             redrawGame();
+
+            if (hasPlayerNaturalBJ()) {
+                syncButtons();      // révélera la carte du croupier dans ton redraw
+                settleAndFinish();              // active btnNewRound / btnChangeBet
+                redrawGame();
+            }
+
+            syncButtons();
         });
 
         Scene sc = new Scene(root, 600, 600);
         sc.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm());
         return sc;
+    }
+
+    private void syncButtons() {
+        boolean over = roundSettled;
+        btnHit.setDisable(over);
+        btnStay.setDisable(over);
+        btnNewRound.setDisable(!over);
+        btnChangeBet.setDisable(!over);
     }
 
     private Scene buildGameScene() {
@@ -324,8 +344,7 @@ public class AppFX extends Application {
         btnNewRound.getStyleClass().add("btn-primary");
         btnChangeBet.getStyleClass().add("btn-primary");
 
-        btnNewRound.setDisable(true);
-        btnChangeBet.setDisable(true); // désactivé pendant la manche
+        syncButtons(); // désactivé pendant la manche
 
         HBox bar = new HBox(10, btnChangeBet, btnHit, btnStay, btnNewRound);
         bar.setAlignment(Pos.CENTER);
@@ -371,10 +390,10 @@ public class AppFX extends Application {
             // Si le joueur dépasse 21, on clôt immédiatement la manche
             int p = computeTotal(player);
             if (p >= 21) {
-                btnHit.setDisable(true);
-                btnStay.setDisable(true);
+
                 dealerPlay();       // si 21 après tirage, on passe au croupier
                 settleAndFinish();
+                syncButtons();
                 redrawGame();
                 return;
             }
@@ -384,10 +403,10 @@ public class AppFX extends Application {
 
         btnStay.setOnAction(e -> {
             // révéler et tirer croupier
-            btnHit.setDisable(true);
-            btnStay.setDisable(true);
+
             dealerPlay();  // tire jusqu'à 17
             settleAndFinish(); // calcule payout (2x/1x/0), règle, fin de manche
+            syncButtons();
             redrawGame();
         });
 
@@ -403,12 +422,15 @@ public class AppFX extends Application {
             placeBet(userId, sessionId, currentBet);
             refreshBalanceUI();
 
-            btnHit.setDisable(false);
-            btnStay.setDisable(false);
-            btnNewRound.setDisable(true);
-            btnChangeBet.setDisable(true);
-
             redrawGame();
+
+            if (hasPlayerNaturalBJ()) {
+                syncButtons();      // révélera la carte du croupier dans ton redraw
+                settleAndFinish();              // active btnNewRound / btnChangeBet
+                redrawGame();
+            }
+
+            syncButtons();
         });
 
         btnChangeBet.setOnAction(e -> {
@@ -418,6 +440,13 @@ public class AppFX extends Application {
             }
             openBetEditor();  // prépare bornes/min/max et affiche
         });
+
+        if (roundSettled) {
+            syncButtons();
+        } else {
+            syncButtons();
+        }
+        syncButtons();
 
         Scene sc = new Scene(root, 600, 600);
         sc.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm());
@@ -502,8 +531,7 @@ public class AppFX extends Application {
         boolean playerBJ = (pv == 21 && player.size() == 2);
         if (playerBJ) {
             // désactiver les actions joueur
-            btnHit.setDisable(true);
-            btnStay.setDisable(true);   // => ta vue considère "revealed = btnStay.isDisable()"
+            syncButtons(); // => ta vue considère "revealed = btnStay.isDisable()"
             // ne pas faire dealerPlay(), on compare juste les 2 mains initiales
             settleAndFinish();          // gère payout 3:2 / push si dealer BJ
             redrawGame();
@@ -586,8 +614,7 @@ public class AppFX extends Application {
         refreshBalanceUI();
         roundSettled = true;
 
-        btnNewRound.setDisable(false);
-        btnChangeBet.setDisable(false);
+        syncButtons();
     }
 
 
@@ -641,6 +668,7 @@ public class AppFX extends Application {
         // badge solde en haut droite
         drawBalanceBadgeFX(g, W, H);
         drawResultBanner(g, W, H);
+
     }
     private static final Text PROBE = new Text(); // réutilisable
 

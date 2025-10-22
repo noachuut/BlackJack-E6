@@ -74,24 +74,32 @@ public class AppFX extends Application { // Classe principale JavaFX.
     private Scene buildLoginScene() { // Construit la scène de connexion.
         BorderPane root = new BorderPane(); // Crée le conteneur principal.
         root.setPadding(new Insets(40)); // Ajoute un padding généreux.
+        root.getStyleClass().add("login-root"); // Applique le fond vert texturé défini dans la feuille de style.
 
         VBox form = new VBox(12); // Conteneur vertical pour les champs.
         form.setAlignment(Pos.CENTER); // Centre les éléments.
+        form.setPadding(new Insets(24, 32, 32, 32)); // Ajoute du padding pour évoquer une carte centrée.
+        form.setMaxWidth(360); // Limite la largeur pour conserver la mise en page d'origine.
+        form.getStyleClass().add("login-card"); // Applique le style crème arrondi de la carte de connexion.
 
         Label title = new Label("Connexion"); // Titre de la section.
-        title.getStyleClass().add("title"); // Ajoute une classe CSS générique.
+        title.getStyleClass().add("login-title"); // Utilise la classe dédiée au grand titre crème.
 
         TextField tfEmail = new TextField(); // Champ email.
         tfEmail.setPromptText("Email"); // Placeholder du champ email.
+        tfEmail.getStyleClass().add("input-cream"); // Applique le style crème et arrondi au champ email.
 
         PasswordField pfPassword = new PasswordField(); // Champ mot de passe masqué.
         pfPassword.setPromptText("Mot de passe"); // Placeholder du champ mot de passe.
+        pfPassword.getStyleClass().add("input-cream"); // Applique le style crème au champ mot de passe.
 
         Label message = new Label(); // Label pour afficher les erreurs.
-        message.getStyleClass().add("error"); // Style dédié aux messages d'erreur.
+        message.getStyleClass().add("login-msg"); // Utilise le style rouge doux prévu pour les messages.
 
         Button btnLogin = new Button("Se connecter"); // Bouton de connexion.
+        btnLogin.getStyleClass().add("btn-primary"); // Applique le style principal vert.
         Button btnSignup = new Button("Créer un compte"); // Bouton d'inscription.
+        btnSignup.getStyleClass().addAll("btn-primary", "btn-soft"); // Applique la variante douce pour le second bouton.
         HBox actions = new HBox(10, btnLogin, btnSignup); // Regroupe les boutons.
         actions.setAlignment(Pos.CENTER); // Centre la rangée de boutons.
 
@@ -140,6 +148,7 @@ public class AppFX extends Application { // Classe principale JavaFX.
         VBox root = new VBox(16); // Conteneur vertical principal.
         root.setAlignment(Pos.CENTER); // Centre les éléments.
         root.setPadding(new Insets(40)); // Ajoute un padding confortable.
+        root.getStyleClass().add("app-root"); // Applique le fond vert commun aux écrans de jeu.
 
         Label info = new Label(); // Label informatif sur le solde.
         updateBetInfo(info); // Initialise le texte avec le solde actuel.
@@ -151,6 +160,7 @@ public class AppFX extends Application { // Classe principale JavaFX.
         spinner.setEditable(false); // Rend le spinner non éditable.
 
         Button btnStart = new Button("Commencer"); // Bouton pour lancer la manche.
+        btnStart.getStyleClass().add("btn-primary"); // Applique le style vert principal au bouton de démarrage.
 
         root.getChildren().addAll(info, spinner, btnStart); // Assemble la scène.
 
@@ -182,14 +192,19 @@ public class AppFX extends Application { // Classe principale JavaFX.
     private Scene buildGameScene() { // Construit la scène de jeu principale.
         BorderPane root = new BorderPane(); // Conteneur principal.
         root.setPadding(new Insets(12)); // Ajoute un padding léger.
+        root.getStyleClass().add("app-root"); // Applique le fond dégradé vert au plateau.
 
         gameCanvas = new Canvas(640, 520); // Crée le canvas de dessin.
         root.setCenter(new StackPane(gameCanvas)); // Place le canvas au centre.
 
         btnHit = new Button("Tirer"); // Bouton tirer.
+        btnHit.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton tirer.
         btnStay = new Button("Rester"); // Bouton rester.
+        btnStay.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton rester.
         btnNewRound = new Button("Nouvelle manche"); // Bouton pour recommencer.
+        btnNewRound.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton nouvelle manche.
         btnChangeBet = new Button("Changer mise"); // Bouton pour ouvrir l'éditeur de mise.
+        btnChangeBet.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton de changement de mise.
 
         HBox actions = new HBox(10, btnChangeBet, btnHit, btnStay, btnNewRound); // Regroupe les boutons d'action.
         actions.setAlignment(Pos.CENTER); // Centre la rangée.
@@ -209,6 +224,10 @@ public class AppFX extends Application { // Classe principale JavaFX.
         betEditor.setAlignment(Pos.CENTER); // Centre le contenu.
         betEditor.setPadding(new Insets(10)); // Ajoute un padding.
         betEditor.setVisible(false); // Cache l'éditeur par défaut.
+        betEditor.getStyleClass().add("bet-editor"); // Applique le style semi-transparent pour l'encart d'édition.
+
+        btnApplyBet.getStyleClass().add("btn-primary"); // Applique le style vert sur la validation de mise.
+        btnCloseBet.getStyleClass().add("btn-close-small"); // Applique le style clair sur le bouton de fermeture.
 
         VBox bottom = new VBox(8, betEditor, actions); // Empile l'éditeur au-dessus des actions.
         bottom.setAlignment(Pos.CENTER); // Centre l'ensemble.

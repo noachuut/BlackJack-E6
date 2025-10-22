@@ -7,24 +7,24 @@
 /* Titre */
 .login-title {
     -fx-font-family: "Segoe UI Semibold", "Inter", "Arial";
-    -fx-font-size: 44px;
+    -fx-font-size: 36px;
     -fx-text-fill: #0f3c2d;
-    -fx-letter-spacing: 1.2px;
+    -fx-letter-spacing: 0.8px;
     -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.35), 14, 0.2, 0, 2);
-    -fx-padding: 0 0 12 0;
+    -fx-padding: 0 0 10 0;
 }
 
 .login-brand-title {
     -fx-font-family: "Segoe UI Black", "Montserrat", "Arial";
-    -fx-font-size: 32px;
+    -fx-font-size: 28px;
     -fx-text-fill: #f6efe1;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 12, 0.25, 0, 3);
-    -fx-padding: 12 0 0 0;
+    -fx-padding: 10 0 0 0;
 }
 
 .login-brand-subtitle {
     -fx-font-family: "Segoe UI", "Inter", "Arial";
-    -fx-font-size: 16px;
+    -fx-font-size: 14px;
     -fx-text-fill: rgba(246, 239, 224, 0.9);
     -fx-text-alignment: center;
     -fx-padding: 6 12 0 12;
@@ -65,7 +65,7 @@
 /* Boutons */
 .btn-primary {
     -fx-background-radius: 14;
-    -fx-padding: 10 18;
+    -fx-padding: 8 18;
     -fx-font-size: 15px;
     -fx-font-weight: 700;
     -fx-text-fill: white;

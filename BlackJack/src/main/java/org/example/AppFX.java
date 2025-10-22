@@ -87,15 +87,23 @@ public class AppFX extends Application { // Classe principale JavaFX.
         root.setPadding(new Insets(32, 0, 32, 0)); // Ajoute un espace vertical pour voir le fond vert.
         root.getStyleClass().add("login-root"); // Applique le fond vert texturé défini dans la feuille de style.
 
-        HBox card = new HBox(48); // Crée une carte horizontale composée de deux colonnes.
+        HBox card = new HBox(36); // Crée une carte horizontale composée de deux colonnes avec un écart réduit.
         card.setAlignment(Pos.CENTER_LEFT); // Aligne le contenu vers la gauche pour accentuer la largeur.
-        card.setPadding(new Insets(38, 52, 38, 52)); // Ajoute un padding interne généreux.
-        card.setMinHeight(320); // Garantit une silhouette horizontale.
-        card.setMaxWidth(760); // Empêche la carte de s'étendre sur toute la scène.
+        card.setPadding(new Insets(30, 40, 30, 40)); // Ajoute un padding interne mesuré pour alléger la carte.
+        card.setMinHeight(260); // Garantit une silhouette horizontale mais plus compacte.
+        card.setPrefHeight(300); // Fixe une hauteur préférée équilibrée pour l'œil.
+        card.setMaxHeight(340); // Empêche le panneau de s'étirer verticalement en plein écran.
+        card.setMinWidth(520); // Définit une largeur minimale pour conserver la lisibilité.
+        card.setPrefWidth(620); // Spécifie la largeur idéale recherchée pour la carte.
+        card.setMaxWidth(640); // Limite l'expansion afin de rester modeste sur écran large.
+        card.setFillHeight(false); // Désactive l'étirement vertical automatique des colonnes.
         card.getStyleClass().add("login-card"); // Applique le style crème arrondi de la carte de connexion.
 
         VBox branding = new VBox(14); // Crée la colonne de gauche dédiée à l'identité visuelle.
         branding.setAlignment(Pos.CENTER); // Centre le logo et les textes.
+        branding.setMinWidth(220); // Bloque une largeur fixe afin d'éviter les étirements.
+        branding.setPrefWidth(220); // Harmonise la largeur préférée avec les contraintes de la carte.
+        branding.setMaxWidth(220); // Verrouille la largeur maximale pour garder un gabarit stable.
 
         StackPane logoBadge = buildLogoBadge(); // Construit le logo vectoriel de l'application.
         Label brandTitle = new Label("BlackJack NC"); // Crée le titre de marque.
@@ -105,10 +113,14 @@ public class AppFX extends Application { // Classe principale JavaFX.
         brandSubtitle.setWrapText(true); // Autorise le passage à la ligne dans la colonne.
         brandSubtitle.setMaxWidth(220); // Limite la largeur pour garder un aspect compact.
         branding.getChildren().addAll(logoBadge, brandTitle, brandSubtitle); // Assemble la colonne de marque.
+        HBox.setHgrow(branding, Priority.NEVER); // Empêche l'agrandissement horizontal involontaire du bloc logo.
 
-        VBox form = new VBox(16); // Crée la colonne de droite pour le formulaire.
+        VBox form = new VBox(14); // Crée la colonne de droite pour le formulaire avec un rythme plus serré.
         form.setAlignment(Pos.CENTER_LEFT); // Aligne les champs vers la gauche pour faciliter la lecture.
-        form.setMaxWidth(300); // Limite la largeur pour conserver l'esthétique de carte.
+        form.setMinWidth(260); // Fixe la largeur minimale pour les champs.
+        form.setPrefWidth(260); // Stabilise la largeur préférée du formulaire.
+        form.setMaxWidth(280); // Limite la largeur pour conserver l'esthétique de carte.
+        HBox.setHgrow(form, Priority.NEVER); // Empêche le formulaire de s'élargir lorsqu'on passe en plein écran.
 
         Label title = new Label("Connexion"); // Titre de la section.
         title.getStyleClass().add("login-title"); // Utilise la classe dédiée au grand titre.
@@ -139,6 +151,11 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         form.getChildren().addAll(title, tfEmail, pfPassword, actions, message); // Assemble le formulaire.
         card.getChildren().addAll(branding, form); // Place les deux colonnes dans la carte horizontale.
+        root.widthProperty().addListener((obs, oldVal, newVal) -> { // Observe l'évolution de la largeur de la scène.
+            double targetWidth = Math.min(620, newVal.doubleValue() - 160); // Calcule une largeur idéale bornée par l'écran.
+            double clamped = Math.max(520, targetWidth); // Empêche la carte de devenir trop petite.
+            card.setPrefWidth(clamped); // Ajuste la largeur préférée dynamiquement.
+        });
         root.getChildren().add(card); // Centre la carte dans la scène.
 
         btnLogin.setOnAction(e -> { // Déclare l'action de connexion.

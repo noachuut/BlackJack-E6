@@ -7,11 +7,27 @@
 /* Titre */
 .login-title {
     -fx-font-family: "Segoe UI Semibold", "Inter", "Arial";
-    -fx-font-size: 56px;
-    -fx-text-fill: #F0E9D8; /* crème */
-    -fx-letter-spacing: 1.5px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 18, 0.3, 0, 3);
-    -fx-padding: 6 0 4 0;
+    -fx-font-size: 44px;
+    -fx-text-fill: #0f3c2d;
+    -fx-letter-spacing: 1.2px;
+    -fx-effect: dropshadow(gaussian, rgba(255,255,255,0.35), 14, 0.2, 0, 2);
+    -fx-padding: 0 0 12 0;
+}
+
+.login-brand-title {
+    -fx-font-family: "Segoe UI Black", "Montserrat", "Arial";
+    -fx-font-size: 32px;
+    -fx-text-fill: #f6efe1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 12, 0.25, 0, 3);
+    -fx-padding: 12 0 0 0;
+}
+
+.login-brand-subtitle {
+    -fx-font-family: "Segoe UI", "Inter", "Arial";
+    -fx-font-size: 16px;
+    -fx-text-fill: rgba(246, 239, 224, 0.9);
+    -fx-text-alignment: center;
+    -fx-padding: 6 12 0 12;
 }
 
 /* Carte formulaire crème, arrondis */
@@ -19,7 +35,13 @@
     -fx-background-color: rgba(248, 239, 224, 0.92); /* crème */
     -fx-background-radius: 18;
     -fx-border-radius: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 22, 0.2, 0, 10);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.28), 28, 0.25, 0, 14);
+    -fx-border-color: rgba(255, 255, 255, 0.35);
+    -fx-border-width: 1.4;
+}
+
+.login-logo {
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.30), 26, 0.35, 0, 6);
 }
 
 .input-cream:focused {

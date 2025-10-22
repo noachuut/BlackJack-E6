@@ -249,6 +249,8 @@ public class AppFX extends Application {
             refreshBalanceUI();
             betScene = buildBetScene();
             switchScene(betScene);
+            
+            
         });
         btnSignup.setOnAction(ev -> {
             Dialog<Long> dlg = buildSignupDialog();

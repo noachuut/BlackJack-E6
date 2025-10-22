@@ -9,6 +9,11 @@ import javafx.scene.control.*; // Importe l'ensemble des contrôles standards.
 import javafx.scene.image.Image; // Importe Image pour charger les ressources.
 import javafx.scene.layout.*; // Importe les conteneurs de mise en page.
 import javafx.stage.Stage; // Importe Stage pour la fenêtre principale.
+import javafx.scene.Group; // Importe Group pour assembler les formes du logo.
+import javafx.scene.paint.Color; // Importe Color pour construire le logo vectoriel.
+import javafx.scene.shape.Circle; // Importe Circle pour dessiner le logo.
+import javafx.scene.shape.Polygon; // Importe Polygon pour dessiner les symboles de cartes.
+import javafx.scene.shape.Rectangle; // Importe Rectangle pour simuler les cartes dans le logo.
 import org.example.db.DatabaseService; // Importe le service de base de données.
 import org.example.db.DatabaseService.UserCredentials; // Importe le type de résultat de login.
 import org.example.game.BlackjackRound; // Importe la logique métier du blackjack.
@@ -57,8 +62,8 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         loginScene = buildLoginScene(); // Construit la scène de connexion.
         stage.setScene(loginScene); // Affiche la scène initiale.
-        stage.setWidth(600); // Positionne une largeur par défaut.
-        stage.setHeight(600); // Positionne une hauteur par défaut.
+        stage.setWidth(960); // Positionne une largeur plus généreuse pour révéler le décor.
+        stage.setHeight(640); // Ajuste la hauteur pour équilibrer la carte horizontale.
         stage.centerOnScreen(); // Centre la fenêtre.
         stage.show(); // Affiche la fenêtre.
     }
@@ -72,39 +77,63 @@ public class AppFX extends Application { // Classe principale JavaFX.
     }
 
     private Scene buildLoginScene() { // Construit la scène de connexion.
-        BorderPane root = new BorderPane(); // Crée le conteneur principal.
-        root.setPadding(new Insets(40)); // Ajoute un padding généreux.
+        StackPane root = new StackPane(); // Crée un conteneur centré pour exposer la carte.
+        root.setPadding(new Insets(32, 0, 32, 0)); // Ajoute un espace vertical pour voir le fond vert.
         root.getStyleClass().add("login-root"); // Applique le fond vert texturé défini dans la feuille de style.
 
-        VBox form = new VBox(12); // Conteneur vertical pour les champs.
-        form.setAlignment(Pos.CENTER); // Centre les éléments.
-        form.setPadding(new Insets(24, 32, 32, 32)); // Ajoute du padding pour évoquer une carte centrée.
-        form.setMaxWidth(360); // Limite la largeur pour conserver la mise en page d'origine.
-        form.getStyleClass().add("login-card"); // Applique le style crème arrondi de la carte de connexion.
+        HBox card = new HBox(48); // Crée une carte horizontale composée de deux colonnes.
+        card.setAlignment(Pos.CENTER_LEFT); // Aligne le contenu vers la gauche pour accentuer la largeur.
+        card.setPadding(new Insets(38, 52, 38, 52)); // Ajoute un padding interne généreux.
+        card.setMinHeight(320); // Garantit une silhouette horizontale.
+        card.setMaxWidth(760); // Empêche la carte de s'étendre sur toute la scène.
+        card.getStyleClass().add("login-card"); // Applique le style crème arrondi de la carte de connexion.
+
+        VBox branding = new VBox(14); // Crée la colonne de gauche dédiée à l'identité visuelle.
+        branding.setAlignment(Pos.CENTER); // Centre le logo et les textes.
+
+        StackPane logoBadge = buildLogoBadge(); // Construit le logo vectoriel de l'application.
+        Label brandTitle = new Label("BlackJack NC"); // Crée le titre de marque.
+        brandTitle.getStyleClass().add("login-brand-title"); // Applique le style typographique principal.
+        Label brandSubtitle = new Label("Entre dans le casino virtuel"); // Crée le slogan d'accroche.
+        brandSubtitle.getStyleClass().add("login-brand-subtitle"); // Applique le style secondaire.
+        brandSubtitle.setWrapText(true); // Autorise le passage à la ligne dans la colonne.
+        brandSubtitle.setMaxWidth(220); // Limite la largeur pour garder un aspect compact.
+        branding.getChildren().addAll(logoBadge, brandTitle, brandSubtitle); // Assemble la colonne de marque.
+
+        VBox form = new VBox(16); // Crée la colonne de droite pour le formulaire.
+        form.setAlignment(Pos.CENTER_LEFT); // Aligne les champs vers la gauche pour faciliter la lecture.
+        form.setMaxWidth(300); // Limite la largeur pour conserver l'esthétique de carte.
 
         Label title = new Label("Connexion"); // Titre de la section.
-        title.getStyleClass().add("login-title"); // Utilise la classe dédiée au grand titre crème.
+        title.getStyleClass().add("login-title"); // Utilise la classe dédiée au grand titre.
 
         TextField tfEmail = new TextField(); // Champ email.
         tfEmail.setPromptText("Email"); // Placeholder du champ email.
         tfEmail.getStyleClass().add("input-cream"); // Applique le style crème et arrondi au champ email.
+        tfEmail.setPrefWidth(260); // Calibre la largeur pour épouser la carte horizontale.
 
         PasswordField pfPassword = new PasswordField(); // Champ mot de passe masqué.
         pfPassword.setPromptText("Mot de passe"); // Placeholder du champ mot de passe.
         pfPassword.getStyleClass().add("input-cream"); // Applique le style crème au champ mot de passe.
+        pfPassword.setPrefWidth(260); // Harmonise la largeur avec le champ email.
 
         Label message = new Label(); // Label pour afficher les erreurs.
         message.getStyleClass().add("login-msg"); // Utilise le style rouge doux prévu pour les messages.
+        message.setWrapText(true); // Autorise le retour à la ligne dans l'encart horizontal.
+        message.setMaxWidth(280); // Limite la largeur pour rester dans la colonne du formulaire.
 
         Button btnLogin = new Button("Se connecter"); // Bouton de connexion.
         btnLogin.getStyleClass().add("btn-primary"); // Applique le style principal vert.
+        btnLogin.setPrefWidth(140); // Calibre la largeur pour l'esthétique horizontale.
         Button btnSignup = new Button("Créer un compte"); // Bouton d'inscription.
         btnSignup.getStyleClass().addAll("btn-primary", "btn-soft"); // Applique la variante douce pour le second bouton.
-        HBox actions = new HBox(10, btnLogin, btnSignup); // Regroupe les boutons.
-        actions.setAlignment(Pos.CENTER); // Centre la rangée de boutons.
+        btnSignup.setPrefWidth(160); // Harmonise la largeur du second bouton.
+        HBox actions = new HBox(12, btnLogin, btnSignup); // Regroupe les boutons.
+        actions.setAlignment(Pos.CENTER_LEFT); // Aligne les actions sur la gauche du formulaire.
 
         form.getChildren().addAll(title, tfEmail, pfPassword, actions, message); // Assemble le formulaire.
-        root.setCenter(form); // Place le formulaire au centre.
+        card.getChildren().addAll(branding, form); // Place les deux colonnes dans la carte horizontale.
+        root.getChildren().add(card); // Centre la carte dans la scène.
 
         btnLogin.setOnAction(e -> { // Déclare l'action de connexion.
             String email = tfEmail.getText().trim(); // Récupère l'email saisi.
@@ -139,10 +168,68 @@ public class AppFX extends Application { // Classe principale JavaFX.
             });
         });
 
-        Scene scene = new Scene(root, 600, 600); // Crée la scène JavaFX.
+        Scene scene = new Scene(root, 960, 640); // Crée la scène JavaFX adaptée à la nouvelle carte.
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm()); // Ajoute la feuille de style existante.
         return scene; // Retourne la scène prête.
     }
+
+    private StackPane buildLogoBadge() { // Construit le logo vectoriel de l'application.
+        StackPane badge = new StackPane(); // Crée le conteneur central.
+        badge.setMinSize(200, 200); // Définit une taille minimale pour garantir une présence visuelle.
+        badge.setPrefSize(200, 200); // Fixe la taille préférée pour la mise en page.
+        badge.getStyleClass().add("login-logo"); // Applique les effets de style du logo.
+
+        Circle outerRing = new Circle(92); // Crée l'anneau extérieur.
+        outerRing.setFill(Color.web("#0c4f34")); // Utilise un vert profond.
+
+        Circle innerRing = new Circle(76); // Crée le disque intérieur.
+        innerRing.setFill(Color.web("#177854")); // Applique un vert plus lumineux.
+
+        Rectangle offsetCard = new Rectangle(120, 160); // Crée la carte d'arrière-plan.
+        offsetCard.setArcWidth(26); // Arrondit les coins.
+        offsetCard.setArcHeight(26); // Arrondit les coins.
+        offsetCard.setFill(Color.rgb(255, 255, 255, 0.35)); // Utilise une teinte translucide pour simuler la profondeur.
+        offsetCard.setRotate(14); // Incline légèrement la carte.
+        offsetCard.setTranslateX(-16); // Décale la carte vers la gauche.
+        offsetCard.setTranslateY(18); // Décale la carte vers le bas.
+
+        Rectangle frontCard = new Rectangle(120, 160); // Crée la carte principale.
+        frontCard.setArcWidth(26); // Arrondit les coins.
+        frontCard.setArcHeight(26); // Arrondit les coins.
+        frontCard.setFill(Color.web("#f6efe1")); // Applique la teinte crème des cartes.
+        frontCard.setStroke(Color.rgb(0, 0, 0, 0.18)); // Ajoute un filet léger.
+        frontCard.setStrokeWidth(2); // Définit l'épaisseur du filet.
+        frontCard.setRotate(-12); // Incline la carte principale.
+        frontCard.setTranslateX(18); // Décale la carte vers la droite.
+        frontCard.setTranslateY(-10); // Lève légèrement la carte.
+
+        Polygon diamond = new Polygon(0.0, -28.0, 22.0, 0.0, 0.0, 28.0, -22.0, 0.0); // Crée un losange rouge.
+        diamond.setFill(Color.web("#d64a4a")); // Applique la couleur cœur/carrelau.
+        diamond.setTranslateX(14); // Centre le motif sur la carte.
+        diamond.setTranslateY(-24); // Place le motif dans le tiers supérieur.
+
+        Circle clubLeft = new Circle(-12, 0, 12); // Crée le lobe gauche du trèfle.
+        clubLeft.setFill(Color.web("#24303b")); // Applique un gris anthracite.
+
+        Circle clubTop = new Circle(0, -12, 12); // Crée le lobe supérieur du trèfle.
+        clubTop.setFill(Color.web("#24303b")); // Utilise la même teinte.
+
+        Circle clubRight = new Circle(12, 0, 12); // Crée le lobe droit du trèfle.
+        clubRight.setFill(Color.web("#24303b")); // Utilise la même teinte.
+
+        Rectangle clubStem = new Rectangle(-4, 12, 8, 20); // Crée la tige du trèfle.
+        clubStem.setArcWidth(6); // Arrondit la base.
+        clubStem.setArcHeight(6); // Arrondit la base.
+        clubStem.setFill(Color.web("#24303b")); // Utilise la même teinte.
+
+        Group club = new Group(clubLeft, clubTop, clubRight, clubStem); // Assemble les éléments du trèfle.
+        club.setTranslateX(-20); // Positionne le trèfle sur la carte.
+        club.setTranslateY(36); // Positionne le trèfle en bas de la carte.
+
+        badge.getChildren().addAll(outerRing, innerRing, offsetCard, frontCard, diamond, club); // Assemble toutes les formes.
+        return badge; // Retourne le logo prêt à l'emploi.
+    }
+
 
     private Scene buildBetScene() { // Construit la scène de sélection de mise.
         VBox root = new VBox(16); // Conteneur vertical principal.

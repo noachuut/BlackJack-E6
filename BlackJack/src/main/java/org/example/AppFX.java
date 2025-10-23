@@ -220,9 +220,9 @@ public class AppFX extends Application { // Classe principale JavaFX.
         HBox card = new HBox(32); // Crée la carte crème alignée horizontalement avec un espacement mesuré.
         card.setAlignment(Pos.CENTER_LEFT); // Aligne les colonnes vers la gauche pour conserver la silhouette étirée.
         card.setPadding(new Insets(30, 40, 30, 40)); // Ajoute un padding interne identique à celui de la connexion.
-        card.setMinHeight(260); // Empêche la carte de devenir trop fine verticalement.
-        card.setPrefHeight(300); // Stabilise une hauteur agréable.
-        card.setMaxHeight(340); // Évite tout étirement excessif en plein écran.
+        card.setMinHeight(320); // Offre une hauteur minimale plus généreuse pour accueillir les champs supplémentaires.
+        card.setPrefHeight(420); // Étend la hauteur préférée afin que tous les champs restent contenus dans la carte.
+        card.setMaxHeight(460); // Autorise un plafond plus élevé tout en conservant une silhouette horizontale.
         card.setMinWidth(700); // Fixe la largeur minimale comme sur le login pour accueillir les champs côte à côte.
         card.setPrefWidth(720); // Déclare la largeur idéale pour la scène.
         card.setMaxWidth(760); // Limite l'expansion pour garder du blanc tournant.
@@ -298,42 +298,43 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         root.getChildren().add(card); // Centre la carte dans la scène d'inscription.
 
-        btnCreate.setOnAction(e -> {
-            String email = tfEmail.getText().trim();
-            String pseudo = tfPseudo.getText().trim();
-            String p1 = pfPassword.getText();
-            String p2 = pfConfirm.getText();
-
-            // validations (une seule fois)
-            if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
-                message.setText("Email invalide.");
-                return;
+        btnCreate.setOnAction(e -> { // Gère la validation du formulaire.
+            String email = tfEmail.getText().trim(); // Récupère l'email saisi.
+            String pseudo = tfPseudo.getText().trim(); // Récupère le pseudo saisi.
+            String p1 = pfPassword.getText(); // Récupère le mot de passe.
+            String p2 = pfConfirm.getText(); // Récupère la confirmation.
+            if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) { // Vérifie le format de l'email.
+                message.setText("Email invalide."); // Informe l'utilisateur.
+                return; // Interrompt la création.
             }
-            if (pseudo.isEmpty()) {
-                message.setText("Pseudo requis.");
-                return;
+            if (pseudo.isEmpty()) { // Vérifie que le pseudo est renseigné.
+                message.setText("Pseudo requis."); // Indique que le champ est obligatoire.
+                return; // Stoppe le traitement.
             }
-            if (!p1.equals(p2) || p1.length() < 12
-                    || !p1.matches(".*[A-Z].*")
-                    || !p1.matches(".*[a-z].*")
-                    || !p1.matches(".*\\d.*")
-                    || !p1.matches(".*[^A-Za-z0-9].*")) {
-                message.setText("Mot de passe trop faible.");
-                return;
+            if (!p1.equals(p2) || p1.length() < 12 || !p1.matches(".*[A-Z].*") || !p1.matches(".*[a-z].*") || !p1.matches(".*\\d.*") || !p1.matches(".*[^A-Za-z0-9].*")) { // Valide la robustesse du mot de passe.
+                message.setText("Mot de passe trop faible."); // Affiche un message d'erreur.
+                return; // Annule la création.
             }
-
-            try {
-                long id = database.createUser(email, pseudo, p1);
-                userId = id;
-                database.applyDailyCredit(userId); // crédit quotidien dès la création (comme au login)
-                refreshBalance();
-                betScene = buildBetScene();
-                switchScene(betScene);
-            } catch (RuntimeException ex) {
-                message.setText("Erreur: " + ex.getMessage());
+            try { // Tente l'enregistrement en base.
+                long id = database.createUser(email, pseudo, p1); // Appelle le service pour créer l'utilisateur.
+                userId = id; // Stocke l'identifiant nouvellement créé.
+                database.applyDailyCredit(userId); // Crédite immédiatement le bonus quotidien pour un compte fraîchement créé.
+                refreshBalance(); // Met à jour le solde initial après application du crédit quotidien.
+                betScene = buildBetScene(); // Prépare la scène de mise.
+                switchScene(betScene); // Dirige immédiatement vers la sélection de mise.
+            } catch (RuntimeException ex) { // Capture une erreur métier éventuelle.
+                message.setText("Erreur: " + ex.getMessage()); // Affiche l'erreur pour l'utilisateur.
             }
+            if (!SecurityUtil.checkPwd(rawPwd, creds.hash())) { // Vérifie le mot de passe.
+                message.setText("Mot de passe incorrect."); // Informe de l'échec.
+                return; // Stoppe la procédure.
+            }
+            userId = creds.id(); // Mémorise l'identifiant.
+            database.applyDailyCredit(userId); // Déclenche le crédit quotidien.
+            refreshBalance(); // Met à jour le solde local.
+            betScene = buildBetScene(); // Construit la scène de mise.
+            switchScene(betScene); // Affiche la scène suivante.
         });
-
 
         btnBack.setOnAction(e -> { // Gère le retour vers la connexion.
             loginScene = buildLoginScene(); // Reconstruit la scène de connexion pour retrouver un formulaire vierge.

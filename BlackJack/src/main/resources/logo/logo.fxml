@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.paint.LinearGradient?>
+<?import javafx.scene.paint.RadialGradient?>
+<?import javafx.scene.paint.Stop?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Rectangle?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.Group?>
+
+<StackPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml" prefHeight="200.0" prefWidth="200.0">
+    <children>
+        <StackPane prefHeight="200.0" prefWidth="200.0">
+            <children>
+                <Circle radius="90.0">
+                    <fill>
+                        <RadialGradient centerX="0.5" centerY="0.45" radius="0.95">
+                            <stops>
+                                <Stop offset="0.0" color="#0f5c3b" />
+                                <Stop offset="1.0" color="#093625" />
+                            </stops>
+                        </RadialGradient>
+                    </fill>
+                    <effect>
+                        <DropShadow color="#00000066" radius="20.0" spread="0.2" />
+                    </effect>
+                </Circle>
+                <Circle radius="76.0" strokeWidth="6.0">
+                    <fill>
+                        <RadialGradient centerX="0.5" centerY="0.4" radius="0.9">
+                            <stops>
+                                <Stop offset="0.0" color="#ffe9a1" />
+                                <Stop offset="1.0" color="#cba346" />
+                            </stops>
+                        </RadialGradient>
+                    </fill>
+                    <stroke>
+                        <LinearGradient endX="0.0" endY="1.0">
+                            <stops>
+                                <Stop offset="0.0" color="#fff5ce" />
+                                <Stop offset="1.0" color="#d6ac38" />
+                            </stops>
+                        </LinearGradient>
+                    </stroke>
+                </Circle>
+                <Circle radius="66.0">
+                    <fill>
+                        <RadialGradient centerX="0.45" centerY="0.3" radius="0.95">
+                            <stops>
+                                <Stop offset="0.0" color="#f9f5ec" />
+                                <Stop offset="1.0" color="#ede2cc" />
+                            </stops>
+                        </RadialGradient>
+                    </fill>
+                </Circle>
+                <Group>
+                    <children>
+                        <Rectangle arcHeight="24.0" arcWidth="24.0" height="90.0" width="120.0" fill="#ffffff" stroke="#dcd0b5" strokeWidth="4.0">
+                            <effect>
+                                <DropShadow color="#00000033" radius="14.0" />
+                            </effect>
+                        </Rectangle>
+                        <Group layoutX="-46.0" layoutY="-28.0">
+                            <children>
+                                <Text text="BLACK" fill="#0f3c2d" strokeType="OUTSIDE" strokeWidth="0.0" layoutY="26.0">
+                                    <font>
+                                        <Font name="Segoe UI Black" size="24.0" />
+                                    </font>
+                                </Text>
+                                <Text text="JACK" fill="#ce1f3d" strokeType="OUTSIDE" strokeWidth="0.0" layoutY="54.0">
+                                    <font>
+                                        <Font name="Segoe UI Black" size="24.0" />
+                                    </font>
+                                </Text>
+                            </children>
+                        </Group>
+                        <Group layoutX="26.0" layoutY="18.0">
+                            <children>
+                                <Circle radius="24.0" fill="#ce1f3d">
+                                    <effect>
+                                        <DropShadow color="#00000040" radius="12.0" spread="0.2" />
+                                    </effect>
+                                </Circle>
+                                <Text text="21" fill="#ffe9a1" strokeType="OUTSIDE" strokeWidth="0.0" layoutY="9.0" layoutX="-16.0">
+                                    <font>
+                                        <Font name="Segoe UI Black" size="28.0" />
+                                    </font>
+                                </Text>
+                            </children>
+                        </Group>
+                    </children>
+                </Group>
+            </children>
+        </StackPane>
+    </children>
+</StackPane>

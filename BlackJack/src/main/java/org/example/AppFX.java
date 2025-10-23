@@ -78,23 +78,23 @@ public class AppFX extends Application { // Classe principale JavaFX.
         root.setPadding(new Insets(32, 0, 32, 0)); // Ajoute un espace vertical pour voir le fond vert.
         root.getStyleClass().add("login-root"); // Applique le fond vert texturé défini dans la feuille de style.
 
-        HBox card = new HBox(36); // Crée une carte horizontale composée de deux colonnes avec un écart réduit.
+        HBox card = new HBox(32); // Crée une carte horizontale composée de deux colonnes avec un espacement légèrement resserré.
         card.setAlignment(Pos.CENTER_LEFT); // Aligne le contenu vers la gauche pour accentuer la largeur.
         card.setPadding(new Insets(30, 40, 30, 40)); // Ajoute un padding interne mesuré pour alléger la carte.
         card.setMinHeight(260); // Garantit une silhouette horizontale mais plus compacte.
         card.setPrefHeight(300); // Fixe une hauteur préférée équilibrée pour l'œil.
         card.setMaxHeight(340); // Empêche le panneau de s'étirer verticalement en plein écran.
-        card.setMinWidth(520); // Définit une largeur minimale pour conserver la lisibilité.
-        card.setPrefWidth(620); // Spécifie la largeur idéale recherchée pour la carte.
-        card.setMaxWidth(640); // Limite l'expansion afin de rester modeste sur écran large.
+        card.setMinWidth(700); // Définit une largeur minimale plus généreuse afin de laisser respirer les contrôles.
+        card.setPrefWidth(720); // Spécifie la largeur idéale recherchée pour accueillir les boutons non tronqués.
+        card.setMaxWidth(760); // Autorise une expansion modérée pour garder du blanc tournant sur grand écran.
         card.setFillHeight(false); // Désactive l'étirement vertical automatique des colonnes.
         card.getStyleClass().add("login-card"); // Applique le style crème arrondi de la carte de connexion.
 
         VBox branding = new VBox(14); // Crée la colonne de gauche dédiée à l'identité visuelle.
         branding.setAlignment(Pos.CENTER); // Centre le logo et les textes.
-        branding.setMinWidth(220); // Bloque une largeur fixe afin d'éviter les étirements.
-        branding.setPrefWidth(220); // Harmonise la largeur préférée avec les contraintes de la carte.
-        branding.setMaxWidth(220); // Verrouille la largeur maximale pour garder un gabarit stable.
+        branding.setMinWidth(210); // Bloque une largeur fixe tout en accordant un peu plus de place au formulaire.
+        branding.setPrefWidth(210); // Harmonise la largeur préférée avec les nouvelles proportions de la carte.
+        branding.setMaxWidth(210); // Verrouille la largeur maximale pour conserver un gabarit stable autour du logo.
 
         StackPane logoBadge = buildLogoBadge(); // Construit le conteneur du logo importé.
         branding.getChildren().add(logoBadge); // Ajoute uniquement le logo sans texte additionnel.
@@ -102,9 +102,9 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         VBox form = new VBox(14); // Crée la colonne de droite pour le formulaire avec un rythme plus serré.
         form.setAlignment(Pos.CENTER_LEFT); // Aligne les champs vers la gauche pour faciliter la lecture.
-        form.setMinWidth(260); // Fixe la largeur minimale pour les champs.
-        form.setPrefWidth(260); // Stabilise la largeur préférée du formulaire.
-        form.setMaxWidth(280); // Limite la largeur pour conserver l'esthétique de carte.
+        form.setMinWidth(320); // Fixe une largeur minimale plus confortable pour aligner champs et boutons.
+        form.setPrefWidth(360); // Stabilise la largeur préférée du formulaire pour afficher les deux actions côte à côte.
+        form.setMaxWidth(360); // Limite l'expansion pour préserver les proportions de la carte horizontale.
         HBox.setHgrow(form, Priority.NEVER); // Empêche le formulaire de s'élargir lorsqu'on passe en plein écran.
 
         Label title = new Label("Connexion"); // Titre de la section.
@@ -113,33 +113,35 @@ public class AppFX extends Application { // Classe principale JavaFX.
         TextField tfEmail = new TextField(); // Champ email.
         tfEmail.setPromptText("Email"); // Placeholder du champ email.
         tfEmail.getStyleClass().add("input-cream"); // Applique le style crème et arrondi au champ email.
-        tfEmail.setPrefWidth(260); // Calibre la largeur pour épouser la carte horizontale.
+        tfEmail.setPrefWidth(320); // Calibre la largeur pour exploiter l'espace supplémentaire de la carte.
 
         PasswordField pfPassword = new PasswordField(); // Champ mot de passe masqué.
         pfPassword.setPromptText("Mot de passe"); // Placeholder du champ mot de passe.
         pfPassword.getStyleClass().add("input-cream"); // Applique le style crème au champ mot de passe.
-        pfPassword.setPrefWidth(260); // Harmonise la largeur avec le champ email.
+        pfPassword.setPrefWidth(320); // Harmonise la largeur avec le champ email élargi.
 
         Label message = new Label(); // Label pour afficher les erreurs.
         message.getStyleClass().add("login-msg"); // Utilise le style rouge doux prévu pour les messages.
         message.setWrapText(true); // Autorise le retour à la ligne dans l'encart horizontal.
-        message.setMaxWidth(280); // Limite la largeur pour rester dans la colonne du formulaire.
+        message.setMaxWidth(320); // Limite la largeur pour rester dans la colonne du formulaire élargie.
 
         Button btnLogin = new Button("Se connecter"); // Bouton de connexion.
         btnLogin.getStyleClass().add("btn-primary"); // Applique le style principal vert.
-        btnLogin.setPrefWidth(140); // Calibre la largeur pour l'esthétique horizontale.
+        btnLogin.setMinWidth(160); // Garantit une largeur minimale suffisante pour afficher entièrement le libellé.
+        btnLogin.setPrefWidth(160); // Stabilise la largeur pour conserver l'alignement des deux actions.
         Button btnSignup = new Button("Créer un compte"); // Bouton d'inscription.
         btnSignup.getStyleClass().addAll("btn-primary", "btn-soft"); // Applique la variante douce pour le second bouton.
-        btnSignup.setPrefWidth(160); // Harmonise la largeur du second bouton.
+        btnSignup.setMinWidth(180); // Réserve l'espace nécessaire pour la chaîne plus longue de création de compte.
+        btnSignup.setPrefWidth(180); // Stabilise la largeur pour éviter tout rognage du texte.
         HBox actions = new HBox(12, btnLogin, btnSignup); // Regroupe les boutons.
         actions.setAlignment(Pos.CENTER_LEFT); // Aligne les actions sur la gauche du formulaire.
 
         form.getChildren().addAll(title, tfEmail, pfPassword, actions, message); // Assemble le formulaire.
         card.getChildren().addAll(branding, form); // Place les deux colonnes dans la carte horizontale.
         root.widthProperty().addListener((obs, oldVal, newVal) -> { // Observe l'évolution de la largeur de la scène.
-            double targetWidth = Math.min(620, newVal.doubleValue() - 160); // Calcule une largeur idéale bornée par l'écran.
-            double clamped = Math.max(520, targetWidth); // Empêche la carte de devenir trop petite.
-            card.setPrefWidth(clamped); // Ajuste la largeur préférée dynamiquement.
+            double targetWidth = Math.min(760, newVal.doubleValue() - 160); // Calcule une largeur idéale tout en conservant une marge latérale.
+            double clamped = Math.max(700, targetWidth); // Empêche la carte de se resserrer au point de tronquer les boutons.
+            card.setPrefWidth(clamped); // Ajuste la largeur préférée dynamiquement selon l'espace disponible.
         });
         root.getChildren().add(card); // Centre la carte dans la scène.
 

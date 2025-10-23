@@ -25,6 +25,7 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
     private Stage stage; // Référence vers la fenêtre principale.
     private Scene loginScene; // Scène pour la connexion.
+    private Scene signupScene; // Scène pour la création de compte.
     private Scene betScene; // Scène pour choisir la mise.
     private Scene gameScene; // Scène principale du jeu.
 
@@ -169,13 +170,8 @@ public class AppFX extends Application { // Classe principale JavaFX.
         });
 
         btnSignup.setOnAction(e -> { // Déclare l'action d'inscription.
-            Dialog<Long> dialog = buildSignupDialog(); // Crée la boîte d'inscription.
-            dialog.showAndWait().ifPresent(id -> { // Attend une réponse.
-                userId = id; // Stocke l'identifiant nouvellement créé.
-                refreshBalance(); // Met à jour le solde initial.
-                betScene = buildBetScene(); // Prépare la scène de mise.
-                switchScene(betScene); // Passe à l'étape suivante.
-            });
+            signupScene = buildSignupScene(); // Construit la scène d'inscription dans le même habillage.
+            switchScene(signupScene); // Affiche la page de création de compte sur la fenêtre courante.
         });
 
         Scene scene = new Scene(root, 960, 640); // Crée la scène JavaFX adaptée à la nouvelle carte.
@@ -213,6 +209,136 @@ public class AppFX extends Application { // Classe principale JavaFX.
             badge.getChildren().add(fallback); // Insère le texte de remplacement dans le conteneur.
         }
         return badge; // Retourne le conteneur prêt à être intégré.
+    }
+
+
+    private Scene buildSignupScene() { // Construit la scène d'inscription avec l'esthétique du login.
+        StackPane root = new StackPane(); // Crée le conteneur central qui exposera la carte horizontale.
+        root.setPadding(new Insets(32, 0, 32, 0)); // Préserve une respiration verticale pour laisser voir le tapis vert.
+        root.getStyleClass().add("login-root"); // Réutilise le fond texturé défini pour la page de connexion.
+
+        HBox card = new HBox(32); // Crée la carte crème alignée horizontalement avec un espacement mesuré.
+        card.setAlignment(Pos.CENTER_LEFT); // Aligne les colonnes vers la gauche pour conserver la silhouette étirée.
+        card.setPadding(new Insets(30, 40, 30, 40)); // Ajoute un padding interne identique à celui de la connexion.
+        card.setMinHeight(260); // Empêche la carte de devenir trop fine verticalement.
+        card.setPrefHeight(300); // Stabilise une hauteur agréable.
+        card.setMaxHeight(340); // Évite tout étirement excessif en plein écran.
+        card.setMinWidth(700); // Fixe la largeur minimale comme sur le login pour accueillir les champs côte à côte.
+        card.setPrefWidth(720); // Déclare la largeur idéale pour la scène.
+        card.setMaxWidth(760); // Limite l'expansion pour garder du blanc tournant.
+        card.setFillHeight(false); // Empêche les colonnes de s'étirer verticalement.
+        card.getStyleClass().add("login-card"); // Applique la couleur crème et les coins arrondis existants.
+
+        VBox branding = new VBox(14); // Colonne gauche dédiée au logo.
+        branding.setAlignment(Pos.CENTER); // Centre le logo.
+        branding.setMinWidth(210); // Garde la même largeur que sur la page de connexion.
+        branding.setPrefWidth(210); // Fixe la largeur préférée identique pour la cohérence visuelle.
+        branding.setMaxWidth(210); // Empêche les variations de largeur.
+
+        StackPane logoBadge = buildLogoBadge(); // Récupère le badge de logo existant.
+        branding.getChildren().add(logoBadge); // Ajoute le logo à la colonne branding.
+        HBox.setHgrow(branding, Priority.NEVER); // Empêche le panneau logo de s'étirer.
+
+        VBox form = new VBox(14); // Colonne droite contenant le formulaire d'inscription.
+        form.setAlignment(Pos.CENTER_LEFT); // Aligne le contenu à gauche pour faciliter la lecture.
+        form.setMinWidth(320); // Réutilise les mêmes largeurs que la colonne de login.
+        form.setPrefWidth(360); // Stabilise la largeur préférée.
+        form.setMaxWidth(360); // Évite un étirement excessif.
+        HBox.setHgrow(form, Priority.NEVER); // Empêche le formulaire d'occuper plus d'espace que prévu.
+
+        Label title = new Label("Créer un compte"); // Titre de la section.
+        title.getStyleClass().add("login-title"); // Applique la même typographie que sur la page de connexion.
+
+        TextField tfEmail = new TextField(); // Champ de saisie pour l'email.
+        tfEmail.setPromptText("Email"); // Indice de saisie pour l'email.
+        tfEmail.getStyleClass().add("input-cream"); // Style crème arrondi pour correspondre aux autres champs.
+        tfEmail.setPrefWidth(320); // Largeur identique au formulaire de connexion.
+
+        TextField tfPseudo = new TextField(); // Champ de saisie pour le pseudo.
+        tfPseudo.setPromptText("Pseudo"); // Indice de saisie pour le pseudo.
+        tfPseudo.getStyleClass().add("input-cream"); // Style crème pour l'uniformité.
+        tfPseudo.setPrefWidth(320); // Largeur alignée sur les autres champs.
+
+        PasswordField pfPassword = new PasswordField(); // Champ pour le mot de passe.
+        pfPassword.setPromptText("Mot de passe"); // Indice de saisie du mot de passe.
+        pfPassword.getStyleClass().add("input-cream"); // Style crème partagé.
+        pfPassword.setPrefWidth(320); // Largeur cohérente.
+
+        PasswordField pfConfirm = new PasswordField(); // Champ pour la confirmation de mot de passe.
+        pfConfirm.setPromptText("Confirmer"); // Indice de saisie pour la confirmation.
+        pfConfirm.getStyleClass().add("input-cream"); // Style crème.
+        pfConfirm.setPrefWidth(320); // Largeur uniforme.
+
+        Label message = new Label(); // Label pour afficher les erreurs potentielles.
+        message.getStyleClass().add("login-msg"); // Style des messages d'erreur utilisé sur la connexion.
+        message.setWrapText(true); // Autorise le retour à la ligne dans la zone horizontale.
+        message.setMaxWidth(320); // Empêche le texte de déborder du formulaire.
+
+        Button btnCreate = new Button("Créer un compte"); // Bouton pour valider la création.
+        btnCreate.getStyleClass().add("btn-primary"); // Style vert principal pour souligner l'action.
+        btnCreate.setMinWidth(180); // Largeur minimale pour afficher l'intitulé complet.
+        btnCreate.setPrefWidth(180); // Largeur préférée stable.
+
+        Button btnBack = new Button("Se connecter"); // Bouton pour revenir à la page de connexion.
+        btnBack.getStyleClass().addAll("btn-primary", "btn-soft"); // Variante douce pour l'action secondaire.
+        btnBack.setMinWidth(160); // Largeur minimale identique à celle du login.
+        btnBack.setPrefWidth(160); // Largeur préférée alignée.
+
+        HBox actions = new HBox(12, btnCreate, btnBack); // Regroupe les deux actions horizontalement.
+        actions.setAlignment(Pos.CENTER_LEFT); // Aligne les boutons à gauche comme sur le login.
+
+        form.getChildren().addAll(title, tfEmail, tfPseudo, pfPassword, pfConfirm, actions, message); // Assemble les éléments du formulaire dans l'ordre logique.
+        card.getChildren().addAll(branding, form); // Place les deux colonnes dans la carte.
+
+        root.widthProperty().addListener((obs, oldVal, newVal) -> { // Observe les variations de largeur de la scène.
+            double targetWidth = Math.min(760, newVal.doubleValue() - 160); // Calcule une largeur souhaitée en conservant une marge latérale.
+            double clamped = Math.max(700, targetWidth); // Empêche la carte de devenir trop étroite.
+            card.setPrefWidth(clamped); // Ajuste la largeur préférée dynamiquement.
+        });
+
+        root.getChildren().add(card); // Centre la carte dans la scène d'inscription.
+
+        btnCreate.setOnAction(e -> { // Gère la validation du formulaire.
+            String email = tfEmail.getText().trim(); // Récupère l'email saisi.
+            String pseudo = tfPseudo.getText().trim(); // Récupère le pseudo saisi.
+            String p1 = pfPassword.getText(); // Récupère le mot de passe.
+            String p2 = pfConfirm.getText(); // Récupère la confirmation.
+            if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) { // Vérifie le format de l'email.
+                message.setText("Email invalide."); // Informe l'utilisateur.
+                return; // Interrompt la création.
+            }
+            if (pseudo.isEmpty()) { // Vérifie que le pseudo est renseigné.
+                message.setText("Pseudo requis."); // Indique que le champ est obligatoire.
+                return; // Stoppe le traitement.
+            }
+            if (!p1.equals(p2) || p1.length() < 12 || !p1.matches(".*[A-Z].*") || !p1.matches(".*[a-z].*") || !p1.matches(".*\\d.*") || !p1.matches(".*[^A-Za-z0-9].*")) { // Valide la robustesse du mot de passe.
+                message.setText("Mot de passe trop faible."); // Affiche un message d'erreur.
+                return; // Annule la création.
+            }
+            try { // Tente l'enregistrement en base.
+                long id = database.createUser(email, pseudo, p1); // Appelle le service pour créer l'utilisateur.
+                userId = id; // Stocke l'identifiant nouvellement créé.
+                refreshBalance(); // Met à jour le solde initial.
+                betScene = buildBetScene(); // Prépare la scène de mise.
+                switchScene(betScene); // Dirige immédiatement vers la sélection de mise.
+            } catch (RuntimeException ex) { // Capture une erreur métier éventuelle.
+                message.setText("Erreur: " + ex.getMessage()); // Affiche l'erreur pour l'utilisateur.
+            }
+            userId = creds.id(); // Mémorise l'identifiant.
+            database.applyDailyCredit(userId); // Déclenche le crédit quotidien.
+            refreshBalance(); // Met à jour le solde local.
+            betScene = buildBetScene(); // Construit la scène de mise.
+            switchScene(betScene); // Affiche la scène suivante.
+        });
+
+        btnBack.setOnAction(e -> { // Gère le retour vers la connexion.
+            loginScene = buildLoginScene(); // Reconstruit la scène de connexion pour retrouver un formulaire vierge.
+            switchScene(loginScene); // Affiche la page de connexion dans la même fenêtre.
+        });
+
+        Scene scene = new Scene(root, 960, 640); // Construit la scène JavaFX pour l'inscription.
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm()); // Applique la feuille de style partagée.
+        return scene; // Retourne la scène finalisée.
     }
 
 
@@ -429,50 +555,6 @@ public class AppFX extends Application { // Classe principale JavaFX.
             alert("Mise ajustée à " + currentBet + " XPF."); // Informe le joueur.
         }
         return true; // La mise est acceptable.
-    }
-
-    private Dialog<Long> buildSignupDialog() { // Construit la boîte de dialogue d'inscription.
-        Dialog<Long> dialog = new Dialog<>(); // Crée la boîte de dialogue.
-        dialog.setTitle("Créer un compte"); // Définit le titre.
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL); // Ajoute les boutons standard.
-
-        TextField tfEmail = new TextField(); // Champ email.
-        TextField tfPseudo = new TextField(); // Champ pseudo.
-        PasswordField pf1 = new PasswordField(); // Champ mot de passe.
-        PasswordField pf2 = new PasswordField(); // Champ confirmation.
-        tfEmail.setPromptText("Email"); // Placeholder email.
-        tfPseudo.setPromptText("Pseudo"); // Placeholder pseudo.
-        pf1.setPromptText("Mot de passe"); // Placeholder mot de passe.
-        pf2.setPromptText("Confirmer"); // Placeholder confirmation.
-
-        VBox content = new VBox(8, new Label("Email"), tfEmail, new Label("Pseudo"), tfPseudo, new Label("Mot de passe"), pf1, new Label("Confirmer"), pf2); // Assemble les champs.
-        content.setPadding(new Insets(20)); // Ajoute du padding.
-        dialog.getDialogPane().setContent(content); // Place le contenu dans la boîte.
-
-        dialog.setResultConverter(button -> { // Définit la conversion du résultat.
-            if (button != ButtonType.OK) { // Si l'utilisateur annule.
-                return null; // Retourne null pour ignorer.
-            }
-            String email = tfEmail.getText().trim(); // Récupère l'email.
-            String pseudo = tfPseudo.getText().trim(); // Récupère le pseudo.
-            String p1 = pf1.getText(); // Récupère le mot de passe.
-            String p2 = pf2.getText(); // Récupère la confirmation.
-            if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) { // Valide l'email.
-                alert("Email invalide"); // Informe l'utilisateur.
-                return null; // Annule la création.
-            }
-            if (!p1.equals(p2) || p1.length() < 12 || !p1.matches(".*[A-Z].*") || !p1.matches(".*[a-z].*") || !p1.matches(".*\\d.*") || !p1.matches(".*[^A-Za-z0-9].*")) { // Vérifie la robustesse du mot de passe.
-                alert("Mot de passe trop faible"); // Informe l'utilisateur.
-                return null; // Annule la création.
-            }
-            try { // Tente la création du compte.
-                return database.createUser(email, pseudo, p1); // Retourne l'identifiant créé.
-            } catch (RuntimeException ex) { // Capture les erreurs métier.
-                alert("Erreur: " + ex.getMessage()); // Affiche le message d'erreur.
-                return null; // Annule le résultat.
-            }
-        });
-        return dialog; // Retourne la boîte prête.
     }
 
     private void refreshBalance() { // Met à jour le solde en cache.

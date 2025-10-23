@@ -1,983 +1,486 @@
-package org.example;
+package org.example; // Déclare le package principal de l'application.
 
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.text.Font;
-import javafx.scene.text.Text;
-import javafx.stage.Stage;
+import javafx.application.Application; // Importe la classe de base JavaFX.
+import javafx.geometry.Insets; // Importe Insets pour gérer les marges.
+import javafx.geometry.Pos; // Importe Pos pour aligner les conteneurs.
+import javafx.scene.Scene; // Importe Scene pour créer des scènes JavaFX.
+import javafx.scene.canvas.Canvas; // Importe Canvas pour dessiner le jeu.
+import javafx.scene.control.*; // Importe l'ensemble des contrôles standards.
+import javafx.fxml.FXMLLoader; // Importe FXMLLoader pour charger le logo décrit en FXML.
+import javafx.scene.image.Image; // Importe Image pour charger les ressources bitmap.
+import javafx.scene.layout.*; // Importe les conteneurs de mise en page.
+import javafx.stage.Stage; // Importe Stage pour la fenêtre principale.
+import org.example.db.DatabaseService; // Importe le service de base de données.
+import org.example.db.DatabaseService.UserCredentials; // Importe le type de résultat de login.
+import org.example.game.BlackjackRound; // Importe la logique métier du blackjack.
+import org.example.game.RoundOutcome; // Importe l'issue de manche.
+import org.example.ui.GameRenderer; // Importe le moteur de rendu du plateau.
 
-import java.sql.*;
-import java.util.*;
+import java.util.Objects; // Importe Objects pour valider les ressources.
 
-public class AppFX extends Application {
+public class AppFX extends Application { // Classe principale JavaFX.
+    private final DatabaseService database = new DatabaseService(); // Service SQL centralisé.
+    private final BlackjackRound round = new BlackjackRound(); // État métier d'une manche.
 
-    // --- État BDD / joueur ---
-    private Connection cn;
-    private long userId = -1L;
-    private long sessionId = -1L;
-    private int currentBet = 500;
-    private int balanceCached = 0;
+    private Stage stage; // Référence vers la fenêtre principale.
+    private Scene loginScene; // Scène pour la connexion.
+    private Scene betScene; // Scène pour choisir la mise.
+    private Scene gameScene; // Scène principale du jeu.
 
-    // --- Jeu (logique deck basique, comme ton Swing) ---
-    private static class Card {
-        final String value; // "A","2"...,"K"
-        final String suit;  // "D","H","S","C"
-        Card(String v, String s){ value=v; suit=s; }
-        int getValue() {
-            if ("AJQK".contains(value)) return "A".equals(value) ? 11 : 10;
-            return Integer.parseInt(value);
-        }
-        boolean isAce(){ return "A".equals(value); }
-        String path(){ return "/card/" + value + "-" + suit + ".png"; }
-        public String toString(){ return value + "-" + suit; }
-    }
-    private final Random rng = new Random();
-    private List<Card> deck;
-    private Card hiddenCard;
-    private final List<Card> dealer = new ArrayList<>();
-    private final List<Card> player = new ArrayList<>();
-    private boolean roundSettled = false;
-    private String resultMsg = "";
+    private Canvas gameCanvas; // Canvas sur lequel le renderer dessine.
+    private GameRenderer renderer; // Responsable du dessin du plateau.
 
-    // --- UI ---
-    private Stage stage;
-    private Scene loginScene, betScene, gameScene;
-    private Canvas gameCanvas;
-    private Button btnHit, btnStay, btnNewRound, btnChangeBet;
-    private Image tapisImg;
+    private Button btnHit; // Bouton pour tirer une carte.
+    private Button btnStay; // Bouton pour rester.
+    private Button btnNewRound; // Bouton pour relancer une manche.
+    private Button btnChangeBet; // Bouton pour modifier la mise.
+    private Button btnApplyBet; // Bouton pour appliquer une nouvelle mise.
+    private Button btnCloseBet; // Bouton pour fermer l'éditeur de mise.
+    private Spinner<Integer> spBet; // Spinner utilisé dans l'éditeur de mise.
+    private HBox betEditor; // Conteneur affichant l'éditeur de mise.
 
-    // rendu cartes
-    private static final double CARD_W = 110;
-    private static final double CARD_H = 160;
-    private static final double CARD_SPACING_FACTOR = 0.35; // 0.35 = cartes bien collées (65% overlap)
-
-    // Éditeur de mise inline
-    private HBox betEditor;
-    private Spinner<Integer> spBet;
-    private Button btnApplyBet, btnCloseBet;
-
-
-    // ====== LAUNCH ======
-    public static void main(String[] args) { launch(args); }
+    private long userId = -1L; // Identifiant joueur connecté.
+    private long sessionId = -1L; // Identifiant de la session en cours.
+    private int currentBet = 500; // Mise actuelle sélectionnée.
+    private int balanceCached = 0; // Solde mis en cache pour le HUD.
+    private String resultMsg = ""; // Message de résultat affiché sur le plateau.
 
     @Override
-    public void start(Stage stage) {
-        this.stage = stage;
-        stage.setTitle("Black Jack");
-        stage.setMinWidth(720);
-        stage.setMinHeight(480);
+    public void start(Stage primaryStage) { // Point d'entrée JavaFX.
+        this.stage = primaryStage; // Conserve la référence de la fenêtre.
+        stage.setTitle("Black Jack"); // Définit le titre de la fenêtre.
+        stage.setMinWidth(720); // Imose une largeur minimale.
+        stage.setMinHeight(480); // Imose une hauteur minimale.
 
-        // DB
-        openDb();
-        ensureSchema();
+        Image tableImage = loadImage("/background/tapis.png"); // Charge le visuel du tapis.
+        Image backImage = loadImage("/card/BACK.png"); // Charge l'image du dos de carte.
+        renderer = new GameRenderer(tableImage, backImage); // Instancie le renderer avec les ressources.
 
-        // Background image
-        try {
-            tapisImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/background/tapis.png")));
-        } catch (Exception e) {
-            tapisImg = null;
-        }
-
-        // Scenes
-        loginScene = buildLoginScene();
-        stage.setScene(loginScene);
-        stage.setWidth(600);
-        stage.setHeight(600);
-        stage.centerOnScreen();
-        stage.show();
+        loginScene = buildLoginScene(); // Construit la scène de connexion.
+        stage.setScene(loginScene); // Affiche la scène initiale.
+        stage.setWidth(960); // Positionne une largeur plus généreuse pour révéler le décor.
+        stage.setHeight(640); // Ajuste la hauteur pour équilibrer la carte horizontale.
+        stage.centerOnScreen(); // Centre la fenêtre.
+        stage.show(); // Affiche la fenêtre.
     }
 
-    // === SCENES ===
-    private void drawHand(GraphicsContext g, List<Card> hand, double x0, double y0) {
-        double dx = CARD_W * CARD_SPACING_FACTOR;
-        // dessiner de la première à la dernière pour que la DERNIÈRE soit “au-dessus”
-        for (int i = 0; i < hand.size(); i++) {
-            Image im = new Image(Objects.requireNonNull(getClass().getResourceAsStream(hand.get(i).path())));
-            double x = x0 + i * dx;
-            g.drawImage(im, x, y0, CARD_W, CARD_H);
+    private Image loadImage(String path) { // Charge une image en gérant les erreurs.
+        try { // Tente l'ouverture de la ressource.
+            return new Image(Objects.requireNonNull(getClass().getResourceAsStream(path))); // Retourne l'image chargée.
+        } catch (Exception ex) { // Capture une éventuelle absence.
+            return null; // Retourne null si la ressource est manquante.
         }
     }
 
-    private boolean hasPlayerNaturalBJ() {
-        return computeTotal(player) == 21 && player.size() == 2;
-    }
+    private Scene buildLoginScene() { // Construit la scène de connexion.
+        StackPane root = new StackPane(); // Crée un conteneur centré pour exposer la carte.
+        root.setPadding(new Insets(32, 0, 32, 0)); // Ajoute un espace vertical pour voir le fond vert.
+        root.getStyleClass().add("login-root"); // Applique le fond vert texturé défini dans la feuille de style.
 
-    private void drawDealer(GraphicsContext g, double x0, double y0, boolean revealed) {
-        double dx = CARD_W * CARD_SPACING_FACTOR;
-        Image back = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/card/BACK.png")));
+        HBox card = new HBox(36); // Crée une carte horizontale composée de deux colonnes avec un écart réduit.
+        card.setAlignment(Pos.CENTER_LEFT); // Aligne le contenu vers la gauche pour accentuer la largeur.
+        card.setPadding(new Insets(30, 40, 30, 40)); // Ajoute un padding interne mesuré pour alléger la carte.
+        card.setMinHeight(260); // Garantit une silhouette horizontale mais plus compacte.
+        card.setPrefHeight(300); // Fixe une hauteur préférée équilibrée pour l'œil.
+        card.setMaxHeight(340); // Empêche le panneau de s'étirer verticalement en plein écran.
+        card.setMinWidth(520); // Définit une largeur minimale pour conserver la lisibilité.
+        card.setPrefWidth(620); // Spécifie la largeur idéale recherchée pour la carte.
+        card.setMaxWidth(640); // Limite l'expansion afin de rester modeste sur écran large.
+        card.setFillHeight(false); // Désactive l'étirement vertical automatique des colonnes.
+        card.getStyleClass().add("login-card"); // Applique le style crème arrondi de la carte de connexion.
 
-        if (!revealed) {
-            // 1) cartes visibles du croupier décalées d’un pas
-            drawHand(g, dealer, x0 + dx, y0);
-            // 2) la carte cachée PAR-DESSUS à gauche
-            g.drawImage(back, x0, y0, CARD_W, CARD_H);
-        } else {
-            // carte cachée révélée + reste des cartes
-            Image hid = new Image(Objects.requireNonNull(getClass().getResourceAsStream(hiddenCard.path())));
-            g.drawImage(hid, x0, y0, CARD_W, CARD_H);
-            drawHand(g, dealer, x0 + dx, y0);
-        }
-    }
+        VBox branding = new VBox(14); // Crée la colonne de gauche dédiée à l'identité visuelle.
+        branding.setAlignment(Pos.CENTER); // Centre le logo et les textes.
+        branding.setMinWidth(220); // Bloque une largeur fixe afin d'éviter les étirements.
+        branding.setPrefWidth(220); // Harmonise la largeur préférée avec les contraintes de la carte.
+        branding.setMaxWidth(220); // Verrouille la largeur maximale pour garder un gabarit stable.
 
-    private Scene buildLoginScene() {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("login-root");
+        StackPane logoBadge = buildLogoBadge(); // Construit le conteneur du logo importé.
+        Label brandTitle = new Label("BlackJack NC"); // Crée le titre de marque.
+        brandTitle.getStyleClass().add("login-brand-title"); // Applique le style typographique principal.
+        Label brandSubtitle = new Label("Entre dans le casino virtuel"); // Crée le slogan d'accroche.
+        brandSubtitle.getStyleClass().add("login-brand-subtitle"); // Applique le style secondaire.
+        brandSubtitle.setWrapText(true); // Autorise le passage à la ligne dans la colonne.
+        brandSubtitle.setMaxWidth(220); // Limite la largeur pour garder un aspect compact.
+        branding.getChildren().addAll(logoBadge, brandTitle, brandSubtitle); // Assemble la colonne de marque.
+        HBox.setHgrow(branding, Priority.NEVER); // Empêche l'agrandissement horizontal involontaire du bloc logo.
 
-        // ---- HERO (cartes + titre) ----
-        VBox hero = new VBox(10);
-        hero.setAlignment(Pos.TOP_CENTER);
-        hero.setPadding(new Insets(40, 0, 10, 0));
+        VBox form = new VBox(14); // Crée la colonne de droite pour le formulaire avec un rythme plus serré.
+        form.setAlignment(Pos.CENTER_LEFT); // Aligne les champs vers la gauche pour faciliter la lecture.
+        form.setMinWidth(260); // Fixe la largeur minimale pour les champs.
+        form.setPrefWidth(260); // Stabilise la largeur préférée du formulaire.
+        form.setMaxWidth(280); // Limite la largeur pour conserver l'esthétique de carte.
+        HBox.setHgrow(form, Priority.NEVER); // Empêche le formulaire de s'élargir lorsqu'on passe en plein écran.
 
-        // Cartes superposées
-        StackPane cardsHero = new StackPane();
-        cardsHero.setMinHeight(120);
-        try {
-            ImageView ace = new ImageView(new Image(getClass().getResourceAsStream("/card/A-S.png")));
-            ace.setFitHeight(120); ace.setPreserveRatio(true);
-            ace.setRotate(-12);
-            ace.setTranslateX(-35);
-            ace.setEffect(new javafx.scene.effect.DropShadow(20, Color.color(0,0,0,0.4)));
+        Label title = new Label("Connexion"); // Titre de la section.
+        title.getStyleClass().add("login-title"); // Utilise la classe dédiée au grand titre.
 
-            ImageView jack = new ImageView(new Image(getClass().getResourceAsStream("/card/J-H.png")));
-            jack.setFitHeight(130); jack.setPreserveRatio(true);
-            jack.setRotate(12);
-            jack.setTranslateX(35);
-            jack.setEffect(new javafx.scene.effect.DropShadow(20, Color.color(0,0,0,0.45)));
+        TextField tfEmail = new TextField(); // Champ email.
+        tfEmail.setPromptText("Email"); // Placeholder du champ email.
+        tfEmail.getStyleClass().add("input-cream"); // Applique le style crème et arrondi au champ email.
+        tfEmail.setPrefWidth(260); // Calibre la largeur pour épouser la carte horizontale.
 
-            cardsHero.getChildren().addAll(ace, jack);
-        } catch (Exception ignore) { /* si images absentes, on n’affiche pas */ }
+        PasswordField pfPassword = new PasswordField(); // Champ mot de passe masqué.
+        pfPassword.setPromptText("Mot de passe"); // Placeholder du champ mot de passe.
+        pfPassword.getStyleClass().add("input-cream"); // Applique le style crème au champ mot de passe.
+        pfPassword.setPrefWidth(260); // Harmonise la largeur avec le champ email.
 
-        Label title = new Label("BLACK JACK");
-        title.getStyleClass().add("login-title");
+        Label message = new Label(); // Label pour afficher les erreurs.
+        message.getStyleClass().add("login-msg"); // Utilise le style rouge doux prévu pour les messages.
+        message.setWrapText(true); // Autorise le retour à la ligne dans l'encart horizontal.
+        message.setMaxWidth(280); // Limite la largeur pour rester dans la colonne du formulaire.
 
-        hero.getChildren().addAll(cardsHero, title);
+        Button btnLogin = new Button("Se connecter"); // Bouton de connexion.
+        btnLogin.getStyleClass().add("btn-primary"); // Applique le style principal vert.
+        btnLogin.setPrefWidth(140); // Calibre la largeur pour l'esthétique horizontale.
+        Button btnSignup = new Button("Créer un compte"); // Bouton d'inscription.
+        btnSignup.getStyleClass().addAll("btn-primary", "btn-soft"); // Applique la variante douce pour le second bouton.
+        btnSignup.setPrefWidth(160); // Harmonise la largeur du second bouton.
+        HBox actions = new HBox(12, btnLogin, btnSignup); // Regroupe les boutons.
+        actions.setAlignment(Pos.CENTER_LEFT); // Aligne les actions sur la gauche du formulaire.
 
-        // ---- CARTE FORMULAIRE ----
-        VBox card = new VBox(16);
-        card.getStyleClass().add("login-card");
-        card.setPadding(new Insets(22, 24, 22, 24));
-        card.setMaxWidth(720);
-        card.setMinWidth(340);
-
-// champs
-        TextField tfEmail = new TextField();
-        tfEmail.setPromptText("Email");
-        tfEmail.getStyleClass().add("input-cream");
-
-        PasswordField pf = new PasswordField();
-        pf.setPromptText("Mot de passe");
-        pf.getStyleClass().add("input-cream");
-
-        TextField tfPwdReveal = new TextField();
-        tfPwdReveal.setPromptText("Mot de passe");
-        tfPwdReveal.getStyleClass().add("input-cream");
-        tfPwdReveal.managedProperty().bind(tfPwdReveal.visibleProperty());
-        tfPwdReveal.setVisible(false);
-        pf.textProperty().bindBidirectional(tfPwdReveal.textProperty());
-
-// --- œil PLUS GRAND (34x34) ---
-        ToggleButton eye = new ToggleButton();
-        eye.getStyleClass().add("eye-toggle");
-        ImageView eyeIcon = new ImageView(new Image(getClass().getResourceAsStream("/icons/eye.png")));
-        eyeIcon.setFitHeight(22); eyeIcon.setPreserveRatio(true);   // <- icône plus grande
-        eye.setGraphic(eyeIcon);
-        eye.setPrefSize(34, 34);                                    // <- bouton plus grand
-        eye.setMinSize(34, 34);
-        eye.selectedProperty().addListener((o, oldV, on) -> {
-            tfPwdReveal.setVisible(on);
-            pf.setVisible(!on);
+        form.getChildren().addAll(title, tfEmail, pfPassword, actions, message); // Assemble le formulaire.
+        card.getChildren().addAll(branding, form); // Place les deux colonnes dans la carte horizontale.
+        root.widthProperty().addListener((obs, oldVal, newVal) -> { // Observe l'évolution de la largeur de la scène.
+            double targetWidth = Math.min(620, newVal.doubleValue() - 160); // Calcule une largeur idéale bornée par l'écran.
+            double clamped = Math.max(520, targetWidth); // Empêche la carte de devenir trop petite.
+            card.setPrefWidth(clamped); // Ajuste la largeur préférée dynamiquement.
         });
+        root.getChildren().add(card); // Centre la carte dans la scène.
 
-// ligne mot de passe
-        StackPane pwdStack = new StackPane(pf, tfPwdReveal);
-        HBox pwdRow = new HBox(10, pwdStack, eye);
-        HBox.setHgrow(pwdStack, Priority.ALWAYS);
-
-// -> la carte ne contient QUE les champs
-        card.getChildren().addAll(tfEmail, pwdRow);
-
-// ---- BOUTONS séparés du formulaire ----
-        Button btnSignup = new Button("Créer un compte");
-        btnSignup.getStyleClass().addAll("btn-primary","btn-soft");
-
-        Button btnLogin = new Button("Se connecter");
-        btnLogin.getStyleClass().add("btn-primary");
-
-        HBox actions = new HBox(18, btnSignup, btnLogin);
-        actions.getStyleClass().add("btn-row");           // <- pour marges
-        actions.setAlignment(Pos.CENTER);
-
-// ---- Message sous la rangée de boutons ----
-        Label msg = new Label();
-        msg.getStyleClass().add("login-msg");
-
-// ---- conteneur central (hero + carte + boutons + msg) ----
-        VBox center = new VBox(20, hero, card, actions, msg);
-        center.setAlignment(Pos.TOP_CENTER);
-        center.setPadding(new Insets(10, 24, 40, 24));
-        root.setCenter(center);
-
-        // responsive : largeur de la carte varie entre 360 et 560 px
-        root.sceneProperty().addListener((obs, oldS, sc) -> {
-            if (sc != null) {
-                card.prefWidthProperty().bind(
-                        javafx.beans.binding.Bindings.createDoubleBinding(
-                                () -> clamp(sc.getWidth() * 0.6, 360, 560), sc.widthProperty()
-                        )
-                );
+        btnLogin.setOnAction(e -> { // Déclare l'action de connexion.
+            String email = tfEmail.getText().trim(); // Récupère l'email saisi.
+            String rawPwd = pfPassword.getText(); // Récupère le mot de passe.
+            if (email.isEmpty() || rawPwd.isEmpty()) { // Vérifie les champs vides.
+                message.setText("Veuillez remplir les deux champs."); // Affiche une erreur.
+                return; // Annule la connexion.
             }
+            UserCredentials creds = database.findUserByEmail(email); // Cherche l'utilisateur.
+            if (creds == null) { // Aucun utilisateur correspondant.
+                message.setText("Utilisateur introuvable."); // Affiche une erreur.
+                return; // Stoppe la procédure.
+            }
+            if (!SecurityUtil.checkPwd(rawPwd, creds.hash())) { // Vérifie le mot de passe.
+                message.setText("Mot de passe incorrect."); // Informe de l'échec.
+                return; // Stoppe la procédure.
+            }
+            userId = creds.id(); // Mémorise l'identifiant.
+            database.applyDailyCredit(userId); // Déclenche le crédit quotidien.
+            refreshBalance(); // Met à jour le solde local.
+            betScene = buildBetScene(); // Construit la scène de mise.
+            switchScene(betScene); // Affiche la scène suivante.
         });
 
-        // actions (ta logique existante)
-        btnLogin.setOnAction(ev -> {
-            String email = tfEmail.getText().trim();
-            String pwd = (pf.isVisible() ? pf.getText() : tfPwdReveal.getText());
-            var u = findUserByEmail(email);
-            if (u == null) { msg.setText("Utilisateur introuvable."); return; }
-            if (!SecurityUtil.checkPwd(pwd, u.hash)) { msg.setText("Mot de passe incorrect."); return; }
-            userId = u.id;
-            applyDailyCredit(userId);
-            refreshBalanceUI();
-            betScene = buildBetScene();
-            switchScene(betScene);
-        });
-        btnSignup.setOnAction(ev -> {
-            Dialog<Long> dlg = buildSignupDialog();
-            dlg.showAndWait().ifPresent(id -> {
-                userId = id;
-                refreshBalanceUI();
-                betScene = buildBetScene();
-                switchScene(betScene);
+        btnSignup.setOnAction(e -> { // Déclare l'action d'inscription.
+            Dialog<Long> dialog = buildSignupDialog(); // Crée la boîte d'inscription.
+            dialog.showAndWait().ifPresent(id -> { // Attend une réponse.
+                userId = id; // Stocke l'identifiant nouvellement créé.
+                refreshBalance(); // Met à jour le solde initial.
+                betScene = buildBetScene(); // Prépare la scène de mise.
+                switchScene(betScene); // Passe à l'étape suivante.
             });
         });
 
-        Scene scn = new Scene(root, 980, 700);
-        scn.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm());
-        return scn;
+        Scene scene = new Scene(root, 960, 640); // Crée la scène JavaFX adaptée à la nouvelle carte.
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm()); // Ajoute la feuille de style existante.
+        return scene; // Retourne la scène prête.
     }
 
-    private static double clamp(double v, double min, double max) {
-        return Math.max(min, Math.min(max, v));
+    private StackPane buildLogoBadge() { // Construit le conteneur du logo importé.
+        StackPane badge = new StackPane(); // Crée le conteneur principal qui centrera le logo.
+        badge.setMinSize(220, 220); // Garantit une zone minimale constante pour la colonne branding.
+        badge.setPrefSize(220, 220); // Définit la taille préférée pour stabiliser la mise en page.
+        badge.setMaxSize(220, 220); // Empêche le logo de s'étirer sur les grands écrans.
+        badge.getStyleClass().add("login-logo"); // Applique l'ombre portée définie dans la feuille de style.
+
+        try { // Tente de charger la composition vectorielle décrite en FXML.
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/logo/logo.fxml")); // Prépare un loader pointant vers le dossier logo.
+            StackPane logoRoot = loader.load(); // Charge la hiérarchie de nœuds représentant le logo.
+            logoRoot.setMaxSize(200, 200); // Contraint la taille maximale pour garder un format stable.
+            logoRoot.setPrefSize(200, 200); // Définit la taille préférée pour l'intégration dans la carte.
+            badge.getChildren().add(logoRoot); // Ajoute le logo vectoriel centré dans le badge.
+        } catch (Exception loadError) { // Cas de repli si la ressource FXML est introuvable ou invalide.
+            Label fallback = new Label("BlackJack"); // Affiche un texte pour éviter un espace vide.
+            fallback.getStyleClass().addAll("login-brand-title", "login-logo-placeholder"); // Réutilise la typo de marque et une classe dédiée.
+            badge.getChildren().add(fallback); // Insère le texte de remplacement dans le conteneur.
+        }
+        return badge; // Retourne le conteneur prêt à être intégré.
     }
 
 
+    private Scene buildBetScene() { // Construit la scène de sélection de mise.
+        VBox root = new VBox(16); // Conteneur vertical principal.
+        root.setAlignment(Pos.CENTER); // Centre les éléments.
+        root.setPadding(new Insets(40)); // Ajoute un padding confortable.
+        root.getStyleClass().add("app-root"); // Applique le fond vert commun aux écrans de jeu.
 
-    private Scene buildBetScene() {
+        Label info = new Label(); // Label informatif sur le solde.
+        updateBetInfo(info); // Initialise le texte avec le solde actuel.
 
+        int balance = balanceCached; // Récupère le solde courant.
+        int minBet = 250; // Déclare la mise minimale.
+        int maxBet = Math.max(minBet, balance); // Calcule la mise maximale autorisée.
+        Spinner<Integer> spinner = new Spinner<>(minBet, maxBet, Math.min(Math.max(currentBet, minBet), maxBet), 50); // Crée un spinner borné.
+        spinner.setEditable(false); // Rend le spinner non éditable.
 
-        int balance = getBalance(userId);
-        int step=50, min=250, max=Math.max(min, balance);
-        Spinner<Integer> sp = new Spinner<>(min, max, Math.min(Math.max(currentBet, min), max), step);
-        sp.setEditable(false);
+        Button btnStart = new Button("Commencer"); // Bouton pour lancer la manche.
+        btnStart.getStyleClass().add("btn-primary"); // Applique le style vert principal au bouton de démarrage.
 
-        Button btnStart = new Button("Commencer");
-        btnStart.getStyleClass().add("btn-primary");
-        Label info = new Label("Choisis ta mise (XPF). Solde: " + balance + " XPF");
+        root.getChildren().addAll(info, spinner, btnStart); // Assemble la scène.
 
-        VBox root = new VBox(12, info, sp, btnStart);
-        root.getStyleClass().add("app-root");
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(20));
-
-
-        btnStart.setOnAction(ev -> {
-            currentBet = sp.getValue();
-            // Démarrer round
-            startRound(); // crée deck + mains
-            sessionId = startSession(userId);
-            placeBet(userId, sessionId, currentBet);
-            refreshBalanceUI();
-
-            gameScene = buildGameScene();
-            switchScene(gameScene);
-            redrawGame();
-
-            if (hasPlayerNaturalBJ()) {
-                syncButtons();      // révélera la carte du croupier dans ton redraw
-                settleAndFinish();              // active btnNewRound / btnChangeBet
-                redrawGame();
+        btnStart.setOnAction(e -> { // Action de démarrage.
+            currentBet = spinner.getValue(); // Enregistre la mise choisie.
+            if (!ensureBetAffordable()) { // Vérifie que la mise est viable.
+                return; // Annule en cas d'impossibilité.
             }
-
-            syncButtons();
+            startNewRound(); // Initialise une nouvelle manche.
+            gameScene = buildGameScene(); // Construit la scène de jeu.
+            switchScene(gameScene); // Affiche la scène.
+            redrawGame(); // Dessine l'état initial.
+            if (round.isPlayerNaturalBlackjack()) { // Vérifie un blackjack naturel.
+                finishRound(round.settle(currentBet)); // Termine immédiatement la manche.
+                redrawGame(); // Met à jour l'affichage.
+            }
+            syncButtons(); // Ajuste l'état des boutons.
         });
 
-        Scene sc = new Scene(root, 600, 600);
-        sc.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm());
-        return sc;
+        Scene scene = new Scene(root, 600, 600); // Crée la scène JavaFX.
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm()); // Applique la feuille de style.
+        return scene; // Retourne la scène préparée.
     }
 
-    private void syncButtons() {
-        boolean over = roundSettled;
-        btnHit.setDisable(over);
-        btnStay.setDisable(over);
-        btnNewRound.setDisable(!over);
-        btnChangeBet.setDisable(!over);
+    private void updateBetInfo(Label label) { // Met à jour le label de solde.
+        label.setText("Solde: " + balanceCached + " XPF — Choisis ta mise"); // Compose le texte informatif.
     }
 
-    private Scene buildGameScene() {
-        BorderPane root = new BorderPane();
-        root.getStyleClass().add("app-root");
+    private Scene buildGameScene() { // Construit la scène de jeu principale.
+        BorderPane root = new BorderPane(); // Conteneur principal.
+        root.setPadding(new Insets(12)); // Ajoute un padding léger.
+        root.getStyleClass().add("app-root"); // Applique le fond dégradé vert au plateau.
 
-        // Canvas jeu
-        gameCanvas = new Canvas(600, 540); // zone de jeu
-        Pane center = new StackPane(gameCanvas);
-        center.setStyle("-fx-background-color: transparent;");
-        root.setCenter(center);
+        gameCanvas = new Canvas(640, 520); // Crée le canvas de dessin.
+        root.setCenter(new StackPane(gameCanvas)); // Place le canvas au centre.
 
-        // Barre des boutons
-        btnHit = new Button("Tirez");
-        btnStay = new Button("Rester");
-        btnNewRound = new Button("Nouvelle manche");
-        btnChangeBet = new Button("Changer mise");
+        btnHit = new Button("Tirer"); // Bouton tirer.
+        btnHit.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton tirer.
+        btnStay = new Button("Rester"); // Bouton rester.
+        btnStay.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton rester.
+        btnNewRound = new Button("Nouvelle manche"); // Bouton pour recommencer.
+        btnNewRound.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton nouvelle manche.
+        btnChangeBet = new Button("Changer mise"); // Bouton pour ouvrir l'éditeur de mise.
+        btnChangeBet.getStyleClass().add("btn-primary"); // Applique le style vert sur le bouton de changement de mise.
 
-        btnHit.getStyleClass().add("btn-primary");
-        btnStay.getStyleClass().add("btn-primary");
-        btnNewRound.getStyleClass().add("btn-primary");
-        btnChangeBet.getStyleClass().add("btn-primary");
+        HBox actions = new HBox(10, btnChangeBet, btnHit, btnStay, btnNewRound); // Regroupe les boutons d'action.
+        actions.setAlignment(Pos.CENTER); // Centre la rangée.
+        actions.setPadding(new Insets(10)); // Ajoute un espace interne.
 
-        syncButtons(); // désactivé pendant la manche
-
-        HBox bar = new HBox(10, btnChangeBet, btnHit, btnStay, btnNewRound);
-        bar.setAlignment(Pos.CENTER);
-        bar.setPadding(new Insets(8));
-        root.setBottom(bar);
-
-        spBet = new Spinner<>();
-        spBet.setEditable(true);
-        spBet.setPrefWidth(120);
-
-// n'accepter que des chiffres dans l'éditeur
-        spBet.getEditor().setTextFormatter(new TextFormatter<>(c -> {
-            if (c.getText().matches("\\d*")) return c;
-            return null;
+        spBet = new Spinner<>(); // Crée le spinner d'édition de mise.
+        spBet.setEditable(true); // Autorise la saisie clavier.
+        spBet.setPrefWidth(120); // Définit une largeur lisible.
+        spBet.getEditor().setTextFormatter(new TextFormatter<Integer>(change -> { // Ajoute un filtre pour les chiffres.
+            return change.getText().matches("\\d*") ? change : null; // N'accepte que les chiffres.
         }));
 
-        btnApplyBet = new Button("OK");
-        btnApplyBet.getStyleClass().add("btn-primary");
+        btnApplyBet = new Button("OK"); // Bouton pour confirmer la nouvelle mise.
+        btnCloseBet = new Button("Fermer"); // Bouton pour fermer l'éditeur sans appliquer.
+        Label lblBet = new Label("Mise (XPF)"); // Label descriptif du spinner.
+        betEditor = new HBox(10, lblBet, spBet, btnApplyBet, btnCloseBet); // Assemble l'éditeur de mise.
+        betEditor.setAlignment(Pos.CENTER); // Centre le contenu.
+        betEditor.setPadding(new Insets(10)); // Ajoute un padding.
+        betEditor.setVisible(false); // Cache l'éditeur par défaut.
+        betEditor.getStyleClass().add("bet-editor"); // Applique le style semi-transparent pour l'encart d'édition.
 
-        btnCloseBet = new Button("✕");
-        btnCloseBet.getStyleClass().add("btn-close-small");
+        btnApplyBet.getStyleClass().add("btn-primary"); // Applique le style vert sur la validation de mise.
+        btnCloseBet.getStyleClass().add("btn-close-small"); // Applique le style clair sur le bouton de fermeture.
 
-        Label lbl = new Label("Mise (XPF)");
-        lbl.setTextFill(Color.WHITE);
+        VBox bottom = new VBox(8, betEditor, actions); // Empile l'éditeur au-dessus des actions.
+        bottom.setAlignment(Pos.CENTER); // Centre l'ensemble.
+        root.setBottom(bottom); // Place le tout en bas de la scène.
 
-        betEditor = new HBox(8, lbl, spBet, btnApplyBet, btnCloseBet);
-        betEditor.setAlignment(Pos.CENTER);
-        betEditor.getStyleClass().add("bet-editor");
-        betEditor.setVisible(false);          // <— caché au départ
-
-// Empile l'éditeur AU-DESSUS de la barre de boutons
-        VBox bottom = new VBox(10, betEditor, new HBox(10, btnChangeBet, btnHit, btnStay, btnNewRound));
-        bottom.setAlignment(Pos.CENTER);
-        bottom.setPadding(new Insets(8));
-        root.setBottom(bottom);
-
-        // Actions
-        btnHit.setOnAction(e -> {
-            // tirer une carte pour joueur
-            Card c = deck.remove(deck.size()-1);
-            player.add(c);
-
-            // Si le joueur dépasse 21, on clôt immédiatement la manche
-            int p = computeTotal(player);
-            if (p >= 21) {
-
-                dealerPlay();       // si 21 après tirage, on passe au croupier
-                settleAndFinish();
-                syncButtons();
-                redrawGame();
-                return;
+        btnHit.setOnAction(e -> handlePlayerHit()); // Connecte l'action tirer.
+        btnStay.setOnAction(e -> handlePlayerStand()); // Connecte l'action rester.
+        btnNewRound.setOnAction(e -> { // Déclare la création d'une nouvelle manche.
+            if (!ensureBetAffordable()) { // Vérifie le solde.
+                return; // Stoppe si insuffisant.
             }
-
-            redrawGame();
+            startNewRound(); // Relance une manche.
+            redrawGame(); // Redessine l'état initial.
+            if (round.isPlayerNaturalBlackjack()) { // Vérifie le blackjack naturel.
+                finishRound(round.settle(currentBet)); // Clôture instantanément.
+                redrawGame(); // Actualise l'affichage.
+            }
+            syncButtons(); // Met à jour l'état des boutons.
         });
+        btnChangeBet.setOnAction(e -> openBetEditor()); // Affiche l'éditeur de mise.
+        btnApplyBet.setOnAction(e -> applyBetEditor()); // Applique une nouvelle mise.
+        btnCloseBet.setOnAction(e -> betEditor.setVisible(false)); // Ferme l'éditeur sans changement.
+        spBet.getEditor().setOnAction(e -> applyBetEditor()); // Valide la mise avec Entrée.
 
-        btnStay.setOnAction(e -> {
-            // révéler et tirer croupier
+        syncButtons(); // Initialise l'état des boutons.
+        Scene scene = new Scene(root, 720, 640); // Crée la scène JavaFX.
+        scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm()); // Applique la feuille de style.
+        return scene; // Retourne la scène prête.
+    }
 
-            dealerPlay();  // tire jusqu'à 17
-            settleAndFinish(); // calcule payout (2x/1x/0), règle, fin de manche
-            syncButtons();
-            redrawGame();
-        });
+    private void startNewRound() { // Prépare une nouvelle manche.
+        resultMsg = ""; // Réinitialise le message affiché.
+        round.start(); // Relance la logique de jeu.
+        sessionId = database.startSession(userId); // Ouvre une session en base.
+        database.placeBet(userId, sessionId, currentBet); // Débite la mise.
+        refreshBalance(); // Actualise le solde après débit.
+        syncButtons(); // Met à jour les boutons.
+    }
 
-        btnNewRound.setOnAction(e -> {
-            // nouvelle manche : réutilise currentBet, n’ouvre pas d’autre fenêtre
-            if (!ensureBetAffordable()) {
-                return;
+    private void handlePlayerHit() { // Logique du bouton "Tirer".
+        if (round.isSettled()) { // Vérifie que la manche est active.
+            return; // Ignore si déjà terminée.
+        }
+        round.playerHit(); // Ajoute une carte à la main du joueur.
+        if (round.playerTotal() >= 21) { // Si le joueur atteint ou dépasse 21.
+            round.playDealerTurn(); // Laisse le croupier jouer pour révéler les cartes.
+            finishRound(round.settle(currentBet)); // Termine la manche et crédite les gains.
+        }
+        redrawGame(); // Actualise le rendu.
+        syncButtons(); // Ajuste les boutons.
+    }
+
+    private void handlePlayerStand() { // Logique du bouton "Rester".
+        if (round.isSettled()) { // Vérifie que la manche est active.
+            return; // Ignore si déjà terminée.
+        }
+        round.playerStand(); // Laisse le croupier jouer jusqu'à 17.
+        finishRound(round.settle(currentBet)); // Calcule et applique le résultat.
+        redrawGame(); // Actualise le rendu.
+        syncButtons(); // Ajuste les boutons.
+    }
+
+    private void finishRound(RoundOutcome outcome) { // Applique le règlement de la manche.
+        database.settle(userId, sessionId, outcome.payout(), outcome.result()); // Synchronise les finances en base.
+        refreshBalance(); // Met à jour le solde pour le HUD.
+        switch (outcome.result()) { // Adapte le message affiché.
+            case "WIN" -> resultMsg = outcome.message(); // Message positif.
+            case "LOSE" -> resultMsg = outcome.message(); // Message négatif.
+            case "PUSH" -> resultMsg = outcome.message(); // Message neutre.
+            default -> resultMsg = ""; // Aucun message dans les autres cas.
+        }
+    }
+
+    private void syncButtons() { // Ajuste l'état des boutons en fonction de la manche.
+        boolean settled = round.isSettled(); // Lit l'état courant.
+        if (btnHit != null) { // Vérifie que les contrôles sont initialisés.
+            btnHit.setDisable(settled); // Désactive Tirer si la manche est finie.
+            btnStay.setDisable(settled); // Désactive Rester si la manche est finie.
+            btnNewRound.setDisable(!settled); // Active Nouvelle manche uniquement après règlement.
+            btnChangeBet.setDisable(!settled); // Autorise le changement de mise seulement après règlement.
+        }
+    }
+
+    private void redrawGame() { // Redessine le plateau de jeu.
+        if (gameCanvas != null && renderer != null) { // Vérifie que les composants sont disponibles.
+            renderer.render(gameCanvas, round, balanceCached, resultMsg); // Confie le dessin au renderer.
+        }
+    }
+
+    private void openBetEditor() { // Prépare l'éditeur de mise.
+        int balance = balanceCached; // Récupère le solde actuel.
+        int minBet = 250; // Mise minimale autorisée.
+        int maxBet = Math.max(minBet, balance); // Calcule la mise maximale possible.
+        SpinnerValueFactory<Integer> factory = new SpinnerValueFactory.IntegerSpinnerValueFactory(minBet, maxBet, Math.min(Math.max(currentBet, minBet), maxBet), 50); // Crée la factory avec pas de 50.
+        spBet.setValueFactory(factory); // Affecte la factory au spinner.
+        spBet.getEditor().setText(String.valueOf(currentBet)); // Pré-remplit le champ texte.
+        betEditor.setVisible(true); // Affiche l'éditeur.
+        spBet.requestFocus(); // Positionne le focus sur le champ.
+    }
+
+    private void applyBetEditor() { // Applique la nouvelle mise saisie.
+        String raw = spBet.getEditor().getText().replaceAll("\\D", ""); // Extrait uniquement les chiffres.
+        if (raw.isEmpty()) { // Vérifie qu'une valeur est présente.
+            return; // Ignore si la saisie est vide.
+        }
+        int value = Integer.parseInt(raw); // Convertit la chaîne en entier.
+        int minBet = 250; // Mise minimale autorisée.
+        int step = 50; // Pas d'incrément.
+        int balance = balanceCached; // Solde actuel.
+        int maxBet = Math.max(minBet, balance); // Mise maximale possible.
+        value = Math.max(minBet, Math.min(maxBet, (value / step) * step)); // Aligne la valeur sur le pas et la borne.
+        currentBet = value; // Enregistre la nouvelle mise.
+        resultMsg = "Mise fixée à " + currentBet + " XPF"; // Informe le joueur de la modification.
+        betEditor.setVisible(false); // Ferme l'éditeur.
+        redrawGame(); // Met à jour l'affichage.
+    }
+
+    private boolean ensureBetAffordable() { // Vérifie que la mise actuelle est compatible avec le solde.
+        int balance = balanceCached; // Récupère le solde.
+        int minBet = 250; // Mise minimale.
+        if (balance < minBet) { // Vérifie que le solde atteint le minimum.
+            alert("Solde insuffisant (min 250 XPF)."); // Affiche une alerte.
+            return false; // Interrompt le processus.
+        }
+        if (currentBet > balance) { // Ajuste la mise si elle dépasse le solde.
+            currentBet = Math.max(minBet, (balance / 50) * 50); // Ajuste la mise au pas de 50.
+            alert("Mise ajustée à " + currentBet + " XPF."); // Informe le joueur.
+        }
+        return true; // La mise est acceptable.
+    }
+
+    private Dialog<Long> buildSignupDialog() { // Construit la boîte de dialogue d'inscription.
+        Dialog<Long> dialog = new Dialog<>(); // Crée la boîte de dialogue.
+        dialog.setTitle("Créer un compte"); // Définit le titre.
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL); // Ajoute les boutons standard.
+
+        TextField tfEmail = new TextField(); // Champ email.
+        TextField tfPseudo = new TextField(); // Champ pseudo.
+        PasswordField pf1 = new PasswordField(); // Champ mot de passe.
+        PasswordField pf2 = new PasswordField(); // Champ confirmation.
+        tfEmail.setPromptText("Email"); // Placeholder email.
+        tfPseudo.setPromptText("Pseudo"); // Placeholder pseudo.
+        pf1.setPromptText("Mot de passe"); // Placeholder mot de passe.
+        pf2.setPromptText("Confirmer"); // Placeholder confirmation.
+
+        VBox content = new VBox(8, new Label("Email"), tfEmail, new Label("Pseudo"), tfPseudo, new Label("Mot de passe"), pf1, new Label("Confirmer"), pf2); // Assemble les champs.
+        content.setPadding(new Insets(20)); // Ajoute du padding.
+        dialog.getDialogPane().setContent(content); // Place le contenu dans la boîte.
+
+        dialog.setResultConverter(button -> { // Définit la conversion du résultat.
+            if (button != ButtonType.OK) { // Si l'utilisateur annule.
+                return null; // Retourne null pour ignorer.
             }
-            resultMsg = "";
-            roundSettled = false;
-            startRound();
-            sessionId = startSession(userId);
-            placeBet(userId, sessionId, currentBet);
-            refreshBalanceUI();
-
-            redrawGame();
-
-            if (hasPlayerNaturalBJ()) {
-                syncButtons();      // révélera la carte du croupier dans ton redraw
-                settleAndFinish();              // active btnNewRound / btnChangeBet
-                redrawGame();
+            String email = tfEmail.getText().trim(); // Récupère l'email.
+            String pseudo = tfPseudo.getText().trim(); // Récupère le pseudo.
+            String p1 = pf1.getText(); // Récupère le mot de passe.
+            String p2 = pf2.getText(); // Récupère la confirmation.
+            if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) { // Valide l'email.
+                alert("Email invalide"); // Informe l'utilisateur.
+                return null; // Annule la création.
             }
-
-            syncButtons();
-        });
-
-        btnChangeBet.setOnAction(e -> {
-            if (betEditor.isVisible()) {
-                betEditor.setVisible(false);
-                return;
+            if (!p1.equals(p2) || p1.length() < 12 || !p1.matches(".*[A-Z].*") || !p1.matches(".*[a-z].*") || !p1.matches(".*\\d.*") || !p1.matches(".*[^A-Za-z0-9].*")) { // Vérifie la robustesse du mot de passe.
+                alert("Mot de passe trop faible"); // Informe l'utilisateur.
+                return null; // Annule la création.
             }
-            openBetEditor();  // prépare bornes/min/max et affiche
-        });
-
-        if (roundSettled) {
-            syncButtons();
-        } else {
-            syncButtons();
-        }
-        syncButtons();
-
-        Scene sc = new Scene(root, 600, 600);
-        sc.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/style.css")).toExternalForm());
-        return sc;
-    }
-
-    private void switchScene(Scene sc) {
-        stage.setScene(sc);
-        stage.centerOnScreen();
-    }
-
-    // === LOGIQUE JEU ===
-    private static final int BET_STEP = 250;
-    private static final int BET_MIN  = 250;
-
-    private void openBetEditor() {
-        int balance = getBalance(userId);
-        int max = Math.max(BET_MIN, balance);
-        int start = Math.min(Math.max(currentBet, BET_MIN), max);
-
-        // value factory avec pas=250
-        SpinnerValueFactory.IntegerSpinnerValueFactory vf =
-                new SpinnerValueFactory.IntegerSpinnerValueFactory(BET_MIN, max, start, BET_STEP);
-        spBet.setValueFactory(vf);
-        spBet.getEditor().setText(String.valueOf(start));
-
-        betEditor.setVisible(true);
-        spBet.requestFocus();
-
-        // Enter = appliquer
-        spBet.getEditor().setOnAction(ev -> applyBetEditor());
-        btnApplyBet.setOnAction(ev -> applyBetEditor());
-        btnCloseBet.setOnAction(ev -> betEditor.setVisible(false));
-    }
-
-    private void applyBetEditor() {
-        // Récup texte, clamp et aligne sur le pas de 250
-        String raw = spBet.getEditor().getText().replaceAll("\\D", "");
-        if (raw.isEmpty()) { return; }
-        int val = Integer.parseInt(raw);
-
-        int balance = getBalance(userId);
-        int max = Math.max(BET_MIN, balance);
-
-        // aligne sur pas de 250, borne min/max
-        val = (val / BET_STEP) * BET_STEP;
-        if (val < BET_MIN) val = BET_MIN;
-        if (val > max)     val = (max / BET_STEP) * BET_STEP;
-
-        spBet.getValueFactory().setValue(val);
-        currentBet = val;
-
-        // petit feedback optionnel via le bandeau résultat
-        resultMsg = "Mise fixée à " + currentBet + " XPF";
-        roundSettled = false;  // ne bloque pas les boutons
-        betEditor.setVisible(false);
-        redrawGame();
-    }
-
-    private void startRound() {
-        roundSettled = false;
-        resultMsg = "";
-        deck = new ArrayList<>();
-        String[] v = {"A","2","3","4","5","6","7","8","9","10","J","Q","K"};
-        String[] s = {"D","H","S","C"};
-        for (String suit : s) for (String val : v) deck.add(new Card(val, suit));
-        // mélange
-        for (int i = 0; i < deck.size(); i++){
-            int j = rng.nextInt(deck.size());
-            Card t = deck.get(i); deck.set(i, deck.get(j)); deck.set(j, t);
-        }
-        dealer.clear();
-        player.clear();
-
-        // initial deal : croupier [hidden] + 1 visible ; joueur 2
-        hiddenCard = deck.remove(deck.size()-1);
-        dealer.add(deck.remove(deck.size()-1));
-        player.add(deck.remove(deck.size()-1));
-        player.add(deck.remove(deck.size()-1));
-
-        int pv = computeTotal(player);
-        boolean playerBJ = (pv == 21 && player.size() == 2);
-        if (playerBJ) {
-            // désactiver les actions joueur
-            syncButtons(); // => ta vue considère "revealed = btnStay.isDisable()"
-            // ne pas faire dealerPlay(), on compare juste les 2 mains initiales
-            settleAndFinish();          // gère payout 3:2 / push si dealer BJ
-            redrawGame();
-        }
-    }
-
-    private void dealerPlay() {
-        // révèle et tire jusqu'à 17
-        while (computeDealerTotal(true) < 17) {
-            dealer.add(deck.remove(deck.size()-1));
-        }
-    }
-
-    private int computeTotal(List<Card> hand) {
-        int sum = 0, aces = 0;
-        for (Card c : hand) { sum += c.getValue(); if (c.isAce()) aces++; }
-        while (sum > 21 && aces > 0) { sum -= 10; aces--; }
-        return sum;
-    }
-
-    private int computeDealerTotal(boolean reveal) {
-        int sum = 0, aces = 0;
-        for (Card c : dealer) { sum += c.getValue(); if (c.isAce()) aces++; }
-        if (reveal && hiddenCard != null) { sum += hiddenCard.getValue(); if (hiddenCard.isAce()) aces++; }
-        while (sum > 21 && aces > 0) { sum -= 10; aces--; }
-        return sum;
-    }
-
-    private void settleAndFinish() {
-        if (roundSettled) return;
-
-        int p = computeTotal(player);
-        int d = computeDealerTotal(true);
-
-        boolean playerBJ = (p == 21 && player.size() == 2);                   // BJ naturel
-        boolean dealerBJ = (d == 21 && hiddenCard != null && dealer.size()==1);// 2 cartes côté croupier
-
-        String result;
-        int payout; // crédit final (mise déjà débitée au début)
-
-        if (p > 21) {
-            result = "LOSE"; payout = 0;
-
-        } else if (playerBJ && dealerBJ) {
-            // Double blackjack = push
-            result = "PUSH"; payout = currentBet;
-
-        } else if (playerBJ) {
-            // BJ joueur bat n'importe quel 21 non-BJ
-            result = "WIN";  payout = (int)Math.round(currentBet * 2.5); // 3:2
-
-        } else if (dealerBJ) {
-            // BJ croupier bat 21 du joueur non-BJ
-            result = "LOSE"; payout = 0;
-
-        } else if (d > 21) {
-            result = "WIN";  payout = currentBet * 2;
-
-        } else if (p == d) {
-            // égalité simple (aucun BJ, les BJ ont été traités plus haut)
-            result = "PUSH"; payout = currentBet;
-
-        } else if (p > d) {
-            result = "WIN";  payout = currentBet * 2;
-
-        } else {
-            result = "LOSE"; payout = 0;
-        }
-
-        // message
-        if ("WIN".equals(result)) {
-            resultMsg = playerBJ ? "Blackjack ! Tu as gagné " : "Tu as gagné ";
-        } else if ("LOSE".equals(result)) {
-            resultMsg = (p > 21) ? "Tu as dépassé 21, tu as perdu " : "Tu as perdu ";
-        } else {
-            resultMsg = "Égalité ";
-        }
-
-        settle(userId, sessionId, payout, result);
-        refreshBalanceUI();
-        roundSettled = true;
-
-        syncButtons();
-    }
-
-
-    private void drawResultBanner(GraphicsContext g, double W, double H) {
-        if (!roundSettled || resultMsg == null || resultMsg.isEmpty()) return;
-
-        // fond semi-transparent
-        g.setFill(Color.rgb(0, 0, 0, 0.55));
-        double bw = W * 0.9, bh = 70;
-        double bx = (W - bw) / 2, by = H - bh - 12;
-        g.fillRoundRect(bx, by, bw, bh, 16, 16);
-
-        // texte centré
-        g.setFont(Font.font("Arial", 24));
-        g.setFill(Color.WHITE);
-        double tw = textWidth(resultMsg, g.getFont());
-        double tx = Math.max(bx + (bw - tw) / 2, bx + 16);
-        double ty = by + bh/2 + 8;
-        g.fillText(resultMsg, tx, ty);
-    }
-
-    private void redrawGame() {
-        GraphicsContext g = gameCanvas.getGraphicsContext2D();
-        double W = gameCanvas.getWidth(), H = gameCanvas.getHeight();
-
-        // fond tapis
-        g.clearRect(0,0,W,H);
-        if (tapisImg != null) g.drawImage(tapisImg, 0, 0, W, H);
-        else {
-            g.setFill(Color.web("#35654d"));
-            g.fillRect(0,0,W,H);
-        }
-
-        // cartes (taille cohérente)
-        double cw = 110, ch = 160;
-        // croupier
-        // dealer
-        boolean revealed = btnStay.isDisable(); // comme tu faisais
-        drawDealer(g, /*x0*/ 20, /*y0*/ 20, revealed);
-
-// joueur
-        drawHand(g, player, 20, 320);            // cartes très proches comme sur ton image
-
-        // points
-        g.setFill(Color.WHITE);
-        g.setFont(Font.font("Arial", 20));
-        g.fillText("Joueur : " + computeTotal(player), 20, 320 + ch + 30);
-        if (revealed) g.fillText("Croupier : " + computeDealerTotal(true), 20, 20 + ch + 30);
-        else g.fillText("Croupier : " + computeDealerTotal(false) + " + ?", 20, 20 + ch + 30);
-
-        // badge solde en haut droite
-        drawBalanceBadgeFX(g, W, H);
-        drawResultBanner(g, W, H);
-
-    }
-    private static final Text PROBE = new Text(); // réutilisable
-
-    private static double textWidth(String s, Font f) {
-        PROBE.setText(s);
-        PROBE.setFont(f);
-        return PROBE.getLayoutBounds().getWidth();
-    }
-
-    private void drawBalanceBadgeFX(GraphicsContext g, double W, double H) {
-        String txt = "Solde  " + balanceCached + " XPF";
-        g.setFont(Font.font("Arial", 16));
-        double textW = textWidth(txt, g.getFont());
-        double padX=14, padY=8, r=14;
-        double w = textW + padX*2 + 18, h = 30;
-
-        double x = W - w - 12, y = 10;
-
-        g.setFill(Color.rgb(0,0,0,0.45)); g.fillRoundRect(x,y,w,h,r,r);
-        g.setStroke(Color.rgb(255,255,255,0.6)); g.setLineWidth(2); g.strokeRoundRect(x,y,w,h,r,r);
-
-        // “jeton or”
-        double coinD = h-10, coinX = x+8, coinY = y+(h-coinD)/2;
-        g.setFill(Color.web("#D6AA3C")); g.fillOval(coinX, coinY, coinD, coinD);
-        g.setStroke(Color.web("#785A1E")); g.strokeOval(coinX, coinY, coinD, coinD);
-
-        g.setFill(Color.web("#F5F2E6"));
-        g.fillText(txt, coinX + coinD + 8, y + h/2 + 6);
-    }
-
-    private boolean ensureBetAffordable() {
-        int balance = getBalance(userId);
-        int step=50, min=250;
-        if (balance < min) {
-            new Alert(Alert.AlertType.WARNING, "Solde insuffisant (min 250 XPF).").showAndWait();
-            return false;
-        }
-        if (currentBet > balance) {
-            int adjusted = Math.max(min, (balance/step)*step);
-            if (adjusted < min) {
-                new Alert(Alert.AlertType.WARNING, "Solde insuffisant pour la mise minimale.").showAndWait();
-                return false;
-            }
-            currentBet = adjusted;
-            new Alert(Alert.AlertType.INFORMATION, "Mise ajustée à " + currentBet + " XPF.").showAndWait();
-        }
-        return true;
-    }
-
-    // === DIALOG signup minimal ===
-    private Dialog<Long> buildSignupDialog() {
-        Dialog<Long> dlg = new Dialog<>();
-        dlg.setTitle("Créer un compte");
-        TextField tfEmail = new TextField();
-        TextField tfPseudo = new TextField();
-        PasswordField pf1 = new PasswordField(), pf2 = new PasswordField();
-        tfEmail.setPromptText("email"); tfPseudo.setPromptText("pseudo");
-        pf1.setPromptText("mot de passe"); pf2.setPromptText("confirmer");
-
-        VBox box = new VBox(10, new Label("Email"), tfEmail, new Label("Pseudo"), tfPseudo,
-                new Label("Mot de passe"), pf1, new Label("Confirmer"), pf2);
-        box.setPadding(new Insets(10));
-        dlg.getDialogPane().setContent(box);
-        dlg.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dlg.setResultConverter(bt -> {
-            if (bt != ButtonType.OK) return null;
-            String email=tfEmail.getText().trim(), pseudo=tfPseudo.getText().trim();
-            String p1=pf1.getText(), p2=pf2.getText();
-            if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) { alert("Email invalide"); return null; }
-            if (!p1.equals(p2) || p1.length()<12 || !p1.matches(".*[A-Z].*") || !p1.matches(".*[a-z].*")
-                    || !p1.matches(".*\\d.*") || !p1.matches(".*[^A-Za-z0-9].*")) { alert("Mot de passe trop faible"); return null; }
-            try {
-                long id = createUser(email, pseudo, p1);
-                return id;
-            } catch (Exception ex) {
-                alert("Erreur: " + ex.getMessage()); return null;
+            try { // Tente la création du compte.
+                return database.createUser(email, pseudo, p1); // Retourne l'identifiant créé.
+            } catch (RuntimeException ex) { // Capture les erreurs métier.
+                alert("Erreur: " + ex.getMessage()); // Affiche le message d'erreur.
+                return null; // Annule le résultat.
             }
         });
-        return dlg;
-    }
-    private void alert(String m){ new Alert(Alert.AlertType.INFORMATION, m).showAndWait(); }
-
-    // === BDD (reprend tes méthodes existantes) ===
-
-    private record UserRow(long id, String hash){}
-
-    private void openDb() {
-        try {
-            Class.forName("org.sqlite.JDBC");
-            String dbPath = resolveDbPath().replace('\\','/');
-            cn = DriverManager.getConnection("jdbc:sqlite:" + dbPath + "?foreign_keys=on");
-        } catch (Exception e) { throw new RuntimeException("DB open", e); }
-    }
-    private static String resolveDbPath() {
-        String base = System.getenv("APPDATA") + "\\Blackjack";
-        try { java.nio.file.Files.createDirectories(java.nio.file.Paths.get(base)); } catch (Exception ignore) {}
-        return base + "\\blackjack.db";
+        return dialog; // Retourne la boîte prête.
     }
 
-    private void ensureSchema() {
-        String[] ddl = new String[] {
-                // 1) Activer les FK (à faire sur CHAQUE connexion)
-                "PRAGMA foreign_keys = ON",
-
-                // 2) Tables
-                """
-        CREATE TABLE IF NOT EXISTS utilisateur (
-          id_utilisateur   INTEGER PRIMARY KEY AUTOINCREMENT,
-          email            TEXT NOT NULL UNIQUE,
-          pseudo           TEXT NOT NULL,
-          hash_mdp         TEXT NOT NULL,
-          date_creation    TEXT NOT NULL DEFAULT (datetime('now')),
-          etat             TEXT NOT NULL DEFAULT 'actif',
-          role             TEXT NOT NULL DEFAULT 'user'
-        )
-        """,
-                """
-        CREATE TABLE IF NOT EXISTS wallet (
-          id_utilisateur     INTEGER PRIMARY KEY,
-          solde_actuel       INTEGER NOT NULL,
-          last_daily_credit  TEXT NOT NULL,
-          created_at         TEXT NOT NULL DEFAULT (datetime('now')),
-          updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
-          FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
-        )
-        """,
-                """
-        CREATE TABLE IF NOT EXISTS session_jeu (
-          id_session       INTEGER PRIMARY KEY AUTOINCREMENT,
-          id_utilisateur   INTEGER NOT NULL,
-          date_debut       TEXT NOT NULL DEFAULT (datetime('now')),
-          date_fin         TEXT,
-          mise_totale      INTEGER NOT NULL DEFAULT 0,
-          gain_total       INTEGER NOT NULL DEFAULT 0,
-          resultat         TEXT,
-          seed_rng         TEXT,
-          FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE
-        )
-        """,
-                """
-        CREATE TABLE IF NOT EXISTS txn (
-          id_tx          INTEGER PRIMARY KEY AUTOINCREMENT,
-          id_utilisateur INTEGER NOT NULL,
-          id_session     INTEGER,
-          type           TEXT NOT NULL,
-          montant        INTEGER NOT NULL,
-          solde_avant    INTEGER NOT NULL,
-          solde_apres    INTEGER NOT NULL,
-          note           TEXT,
-          created_at     TEXT NOT NULL DEFAULT (datetime('now')),
-          FOREIGN KEY (id_utilisateur) REFERENCES utilisateur(id_utilisateur) ON DELETE CASCADE,
-          FOREIGN KEY (id_session)     REFERENCES session_jeu(id_session) ON DELETE SET NULL
-        )
-        """,
-
-                // 3) Triggers (garder tout le bloc BEGIN…END; dans UNE seule String)
-                """
-        CREATE TRIGGER IF NOT EXISTS trg_user_init_wallet
-        AFTER INSERT ON utilisateur
-        BEGIN
-          INSERT INTO wallet(id_utilisateur, solde_actuel, last_daily_credit, created_at, updated_at)
-          VALUES (NEW.id_utilisateur, 10000, date('now'), datetime('now'), datetime('now'));
-
-          INSERT INTO txn(id_utilisateur, id_session, type, montant, solde_avant, solde_apres, note)
-          VALUES (NEW.id_utilisateur, NULL, 'INIT', 10000, 0, 10000, 'Solde initial');
-        END;
-        """,
-                """
-        CREATE TRIGGER IF NOT EXISTS trg_tx_commit
-        AFTER INSERT ON txn
-        BEGIN
-          UPDATE wallet
-             SET solde_actuel = NEW.solde_apres,
-                 updated_at   = datetime('now')
-           WHERE id_utilisateur = NEW.id_utilisateur;
-        END;
-        """
-        };
-
-        try (Statement st = cn.createStatement()) {
-            cn.setAutoCommit(false);
-            for (String sql : ddl) {
-                String q = sql.trim();
-                if (!q.isEmpty()) {
-                    st.executeUpdate(q); // une requête complète à la fois
-                }
-            }
-            cn.commit();
-        } catch (SQLException e) {
-            try { cn.rollback(); } catch (SQLException ignore) {}
-            throw new RuntimeException("schema", e);
-        } finally {
-            try { cn.setAutoCommit(true); } catch (SQLException ignore) {}
-        }
+    private void refreshBalance() { // Met à jour le solde en cache.
+        balanceCached = database.getBalance(userId); // Interroge la base.
     }
 
-
-    private UserRow findUserByEmail(String email) {
-        try (PreparedStatement ps = cn.prepareStatement(
-                "SELECT id_utilisateur, hash_mdp FROM utilisateur WHERE email=?")) {
-            ps.setString(1, email);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return new UserRow(rs.getLong(1), rs.getString(2));
-                return null;
-            }
-        } catch (SQLException e) { throw new RuntimeException(e); }
+    private void switchScene(Scene scene) { // Change la scène affichée.
+        stage.setScene(scene); // Applique la nouvelle scène.
+        stage.centerOnScreen(); // Centre la fenêtre sur l'écran.
     }
 
-    private long createUser(String email, String pseudo, String rawPwd) {
-        String hash = SecurityUtil.hashPwd(rawPwd);
-        try (PreparedStatement ps = cn.prepareStatement(
-                "INSERT INTO utilisateur(email,pseudo,hash_mdp) VALUES (?,?,?)",
-                Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, email);
-            ps.setString(2, pseudo);
-            ps.setString(3, hash);
-            ps.executeUpdate();
-            try (ResultSet rs = ps.getGeneratedKeys()) { if (rs.next()) return rs.getLong(1); }
-            try (Statement st = cn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) {
-                if (rs.next()) return rs.getLong(1);
-            }
-            throw new RuntimeException("createUser: no id");
-        } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unique"))
-                throw new RuntimeException("Cet email est déjà utilisé.");
-            throw new RuntimeException(e);
-        }
+    private void alert(String message) { // Affiche une boîte d'information.
+        new Alert(Alert.AlertType.INFORMATION, message, ButtonType.OK).showAndWait(); // Affiche l'alerte et attend la fermeture.
     }
 
-    private void applyDailyCredit(long uid) {
-        try {
-            boolean old = cn.getAutoCommit();
-            cn.setAutoCommit(false);
-            try (PreparedStatement ps1 = cn.prepareStatement("""
-                    WITH w AS (SELECT id_utilisateur, solde_actuel, last_daily_credit FROM wallet WHERE id_utilisateur = ?)
-                    INSERT INTO txn (id_utilisateur, id_session, type, montant, solde_avant, solde_apres, note)
-                    SELECT ?, NULL, 'DAILY_CREDIT', 1000, w.solde_actuel, w.solde_actuel + 1000, 'Crédit quotidien'
-                    FROM w WHERE date(w.last_daily_credit) < date('now');
-                """);
-                 PreparedStatement ps2 = cn.prepareStatement("""
-                    UPDATE wallet SET last_daily_credit=date('now'), updated_at=datetime('now')
-                    WHERE id_utilisateur=? AND date(last_daily_credit) < date('now');
-                """)) {
-                ps1.setLong(1, uid); ps1.setLong(2, uid); ps1.executeUpdate();
-                ps2.setLong(1, uid); ps2.executeUpdate();
-                cn.commit();
-            } catch (Exception ex) { cn.rollback(); throw ex; }
-            finally { cn.setAutoCommit(old); }
-        } catch (SQLException e) { throw new RuntimeException("daily", e); }
-    }
-
-    private int getBalance(long uid) {
-        try (PreparedStatement ps = cn.prepareStatement(
-                "SELECT solde_actuel FROM wallet WHERE id_utilisateur=?")) {
-            ps.setLong(1, uid);
-            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getInt(1) : 0; }
-        } catch (SQLException e) { throw new RuntimeException(e); }
-    }
-
-    private long startSession(long uid) {
-        try (PreparedStatement ps = cn.prepareStatement(
-                "INSERT INTO session_jeu(id_utilisateur) VALUES (?)", Statement.RETURN_GENERATED_KEYS)) {
-            ps.setLong(1, uid); ps.executeUpdate();
-            try (ResultSet rs = ps.getGeneratedKeys()) { if (rs.next()) return rs.getLong(1); }
-            try (Statement st = cn.createStatement(); ResultSet rs = st.executeQuery("SELECT last_insert_rowid()")) {
-                if (rs.next()) return rs.getLong(1);
-            }
-            throw new RuntimeException("startSession: no id");
-        } catch (SQLException e) { throw new RuntimeException("startSession", e); }
-    }
-
-    private void placeBet(long uid, long sessionId, int amount) {
-        if (amount <= 0) throw new IllegalArgumentException("amount > 0");
-        try {
-            int before = getBalance(uid), after = before - amount;
-            if (after < 0) throw new RuntimeException("Solde insuffisant (" + before + ")");
-            boolean old = cn.getAutoCommit(); cn.setAutoCommit(false);
-            try (PreparedStatement ps = cn.prepareStatement(
-                    "INSERT INTO txn(id_utilisateur,id_session,type,montant,solde_avant,solde_apres,note) VALUES (?,?,?,?,?,?,?)");
-                 PreparedStatement ps2 = cn.prepareStatement(
-                         "UPDATE session_jeu SET mise_totale = mise_totale + ? WHERE id_session=?")) {
-                ps.setLong(1, uid); ps.setLong(2, sessionId); ps.setString(3, "BET");
-                ps.setInt(4, -amount); ps.setInt(5, before); ps.setInt(6, after); ps.setString(7, "Mise"); ps.executeUpdate();
-                ps2.setInt(1, amount); ps2.setLong(2, sessionId); ps2.executeUpdate();
-                cn.commit();
-            } catch (Exception ex){ cn.rollback(); throw ex; }
-            finally { cn.setAutoCommit(old); }
-        } catch (SQLException e) { throw new RuntimeException("placeBet", e); }
-    }
-
-    private void settle(long uid, long sessionId, int delta, String resultat) {
-        try {
-            int before = getBalance(uid), after = before + delta;
-            boolean old = cn.getAutoCommit(); cn.setAutoCommit(false);
-            try (PreparedStatement ps = cn.prepareStatement(
-                    "INSERT INTO txn(id_utilisateur,id_session,type,montant,solde_avant,solde_apres,note) VALUES (?,?,?,?,?,?,?)");
-                 PreparedStatement ps2 = cn.prepareStatement(
-                         "UPDATE session_jeu SET gain_total=gain_total + ?, resultat=?, date_fin=datetime('now') WHERE id_session=?")) {
-                ps.setLong(1, uid); ps.setLong(2, sessionId); ps.setString(3, "PAYOUT");
-                ps.setInt(4, delta); ps.setInt(5, before); ps.setInt(6, after); ps.setString(7, "Règlement manche"); ps.executeUpdate();
-                ps2.setInt(1, delta); ps2.setString(2, resultat); ps2.setLong(3, sessionId); ps2.executeUpdate();
-                cn.commit();
-            } catch (Exception ex){ cn.rollback(); throw ex; }
-            finally { cn.setAutoCommit(old); }
-        } catch (SQLException e) { throw new RuntimeException("settle", e); }
-    }
-
-    private void refreshBalanceUI() {
-        balanceCached = getBalance(userId);
+    public static void main(String[] args) { // Point d'entrée standard.
+        launch(args); // Démarre l'application JavaFX.
     }
 }

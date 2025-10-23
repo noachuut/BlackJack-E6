@@ -324,6 +324,11 @@ public class AppFX extends Application { // Classe principale JavaFX.
             } catch (RuntimeException ex) { // Capture une erreur métier éventuelle.
                 message.setText("Erreur: " + ex.getMessage()); // Affiche l'erreur pour l'utilisateur.
             }
+            userId = creds.id(); // Mémorise l'identifiant.
+            database.applyDailyCredit(userId); // Déclenche le crédit quotidien.
+            refreshBalance(); // Met à jour le solde local.
+            betScene = buildBetScene(); // Construit la scène de mise.
+            switchScene(betScene); // Affiche la scène suivante.
         });
 
         btnBack.setOnAction(e -> { // Gère le retour vers la connexion.

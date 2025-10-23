@@ -8,6 +8,7 @@ import javafx.scene.canvas.Canvas; // Importe Canvas pour dessiner le jeu.
 import javafx.scene.control.*; // Importe l'ensemble des contrôles standards.
 import javafx.fxml.FXMLLoader; // Importe FXMLLoader pour charger le logo décrit en FXML.
 import javafx.scene.image.Image; // Importe Image pour charger les ressources bitmap.
+import javafx.scene.image.ImageView; // Importe ImageView pour afficher les logos bitmaps à l'écran.
 import javafx.scene.layout.*; // Importe les conteneurs de mise en page.
 import javafx.stage.Stage; // Importe Stage pour la fenêtre principale.
 import org.example.db.DatabaseService; // Importe le service de base de données.
@@ -193,13 +194,24 @@ public class AppFX extends Application { // Classe principale JavaFX.
         badge.setMaxSize(220, 220); // Empêche le logo de s'étirer sur les grands écrans.
         badge.getStyleClass().add("login-logo"); // Applique l'ombre portée définie dans la feuille de style.
 
-        try { // Tente de charger la composition vectorielle décrite en FXML.
+        Image pngLogo = loadImage("/logo/logo.png"); // Tente d'abord de charger un logo bitmap fourni dans le dossier dédié.
+        if (pngLogo != null) { // Vérifie que l'image PNG a été trouvée et chargée correctement.
+            ImageView logoView = new ImageView(pngLogo); // Crée une vue d'image pour afficher le logo.
+            logoView.setPreserveRatio(true); // Conserve le ratio pour éviter toute distorsion du visuel.
+            logoView.setSmooth(true); // Active le lissage pour un rendu net sur toutes les résolutions.
+            logoView.setFitWidth(180); // Limite la largeur afin de garder un gabarit cohérent avec la carte.
+            logoView.setFitHeight(180); // Limite également la hauteur pour éviter que le logo ne déborde.
+            badge.getChildren().add(logoView); // Ajoute le logo bitmap centré dans le badge.
+            return badge; // Retourne immédiatement le badge puisque le logo PNG est disponible.
+        }
+
+        try { // Sinon, tente de charger la composition vectorielle décrite en FXML comme solution de repli.
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/logo/logo.fxml")); // Prépare un loader pointant vers le dossier logo.
-            StackPane logoRoot = loader.load(); // Charge la hiérarchie de nœuds représentant le logo.
+            StackPane logoRoot = loader.load(); // Charge la hiérarchie de nœuds représentant le logo vectoriel.
             logoRoot.setMaxSize(200, 200); // Contraint la taille maximale pour garder un format stable.
             logoRoot.setPrefSize(200, 200); // Définit la taille préférée pour l'intégration dans la carte.
             badge.getChildren().add(logoRoot); // Ajoute le logo vectoriel centré dans le badge.
-        } catch (Exception loadError) { // Cas de repli si la ressource FXML est introuvable ou invalide.
+        } catch (Exception loadError) { // Cas de repli final si ni le PNG ni le FXML ne sont disponibles.
             Label fallback = new Label("BlackJack"); // Affiche un texte pour éviter un espace vide.
             fallback.getStyleClass().addAll("login-brand-title", "login-logo-placeholder"); // Réutilise la typo de marque et une classe dédiée.
             badge.getChildren().add(fallback); // Insère le texte de remplacement dans le conteneur.

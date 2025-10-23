@@ -44,6 +44,12 @@
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.30), 26, 0.35, 0, 6);
 }
 
+/* Style de secours si le logo bitmap n'est pas trouvé */
+.login-logo-placeholder {
+    -fx-text-fill: rgba(246, 239, 224, 0.92);
+    -fx-font-size: 24px;
+}
+
 .input-cream:focused {
     -fx-effect: dropshadow(gaussian, rgba(22,160,133,0.45), 16, 0.3, 0, 0);
     -fx-border-color: rgba(22,160,133,0.55);

@@ -6,16 +6,10 @@ import javafx.geometry.Pos; // Importe Pos pour aligner les conteneurs.
 import javafx.scene.Scene; // Importe Scene pour créer des scènes JavaFX.
 import javafx.scene.canvas.Canvas; // Importe Canvas pour dessiner le jeu.
 import javafx.scene.control.*; // Importe l'ensemble des contrôles standards.
-import javafx.scene.image.Image; // Importe Image pour charger les ressources.
+import javafx.fxml.FXMLLoader; // Importe FXMLLoader pour charger le logo décrit en FXML.
+import javafx.scene.image.Image; // Importe Image pour charger les ressources bitmap.
 import javafx.scene.layout.*; // Importe les conteneurs de mise en page.
 import javafx.stage.Stage; // Importe Stage pour la fenêtre principale.
-import javafx.scene.Group; // Importe Group pour assembler les formes du logo.
-import javafx.scene.paint.Color; // Importe Color pour construire le logo vectoriel.
-import javafx.scene.shape.Circle; // Importe Circle pour dessiner le logo.
-import javafx.scene.shape.Polygon; // Importe Polygon pour dessiner les symboles de cartes.
-import javafx.scene.shape.Rectangle; // Importe Rectangle pour simuler les cartes dans le logo.
-import javafx.scene.text.Font; // Importe Font pour styliser le monogramme du logo.
-import javafx.scene.text.Text; // Importe Text pour dessiner les initiales dans le badge.
 import org.example.db.DatabaseService; // Importe le service de base de données.
 import org.example.db.DatabaseService.UserCredentials; // Importe le type de résultat de login.
 import org.example.game.BlackjackRound; // Importe la logique métier du blackjack.
@@ -101,7 +95,7 @@ public class AppFX extends Application { // Classe principale JavaFX.
         branding.setPrefWidth(220); // Harmonise la largeur préférée avec les contraintes de la carte.
         branding.setMaxWidth(220); // Verrouille la largeur maximale pour garder un gabarit stable.
 
-        StackPane logoBadge = buildLogoBadge(); // Construit le logo vectoriel de l'application.
+        StackPane logoBadge = buildLogoBadge(); // Construit le conteneur du logo importé.
         Label brandTitle = new Label("BlackJack NC"); // Crée le titre de marque.
         brandTitle.getStyleClass().add("login-brand-title"); // Applique le style typographique principal.
         Label brandSubtitle = new Label("Entre dans le casino virtuel"); // Crée le slogan d'accroche.
@@ -192,152 +186,25 @@ public class AppFX extends Application { // Classe principale JavaFX.
         return scene; // Retourne la scène prête.
     }
 
-    private StackPane buildLogoBadge() { // Construit le logo vectoriel inspiré du visuel fourni.
-        StackPane badge = new StackPane(); // Crée le conteneur central.
-        badge.setMinSize(220, 220); // Garantit une surface suffisante pour tous les éléments.
-        badge.setPrefSize(220, 220); // Conserve une taille carrée harmonieuse.
-        badge.getStyleClass().add("login-logo"); // Applique le style spécifique du logo.
+    private StackPane buildLogoBadge() { // Construit le conteneur du logo importé.
+        StackPane badge = new StackPane(); // Crée le conteneur principal qui centrera le logo.
+        badge.setMinSize(220, 220); // Garantit une zone minimale constante pour la colonne branding.
+        badge.setPrefSize(220, 220); // Définit la taille préférée pour stabiliser la mise en page.
+        badge.setMaxSize(220, 220); // Empêche le logo de s'étirer sur les grands écrans.
+        badge.getStyleClass().add("login-logo"); // Applique l'ombre portée définie dans la feuille de style.
 
-        Group art = new Group(); // Prépare un groupe pour superposer les formes.
-
-        Circle outerBase = new Circle(0, 0, 104); // Crée le disque de fond vert foncé.
-        outerBase.setFill(Color.web("#0d6c34")); // Applique la teinte principale du cercle extérieur.
-
-        Circle outerRim = new Circle(0, 0, 104); // Crée un contour foncé autour du badge.
-        outerRim.setStroke(Color.web("#093f23")); // Définit la couleur du trait extérieur.
-        outerRim.setStrokeWidth(6); // Épaissit le contour pour rappeler la bordure du logo.
-        outerRim.setFill(Color.TRANSPARENT); // Rend le contour creux pour ne conserver que le trait.
-
-        Circle yellowBand = new Circle(0, 0, 94); // Crée l'anneau jaune interne.
-        yellowBand.setFill(Color.TRANSPARENT); // Rend l'intérieur du cercle transparent.
-        yellowBand.setStroke(Color.web("#f6d047")); // Choisit un jaune doré proche du logo fourni.
-        yellowBand.setStrokeWidth(22); // Définit l'épaisseur de la bande jaune.
-        yellowBand.setTranslateX(6); // Décale légèrement la bande pour l'asymétrie caractéristique.
-
-        Circle innerGreen = new Circle(0, 0, 78); // Crée le disque vert clair central.
-        innerGreen.setFill(Color.web("#1fb665")); // Applique un vert saturé similaire à l'original.
-        innerGreen.setStroke(Color.web("#0f5e32")); // Ajoute un contour sombre pour délimiter le disque.
-        innerGreen.setStrokeWidth(4); // Définit l'épaisseur du contour intérieur.
-
-        Circle yellowAccent = new Circle(24, -18, 64); // Crée la zone jaune décalée visible sur le logo.
-        yellowAccent.setFill(Color.web("#f7d84f")); // Applique la couleur dorée de l'accent.
-        yellowAccent.setOpacity(0.7); // Rend l'accent légèrement translucide pour fondre avec le fond.
-
-        Rectangle cardShadow = new Rectangle(142, 188); // Crée l'ombre portée de la carte.
-        cardShadow.setArcWidth(34); // Arrondit les coins de l'ombre pour suivre la carte.
-        cardShadow.setArcHeight(34); // Arrondit également la hauteur de l'ombre.
-        cardShadow.setFill(Color.rgb(0, 0, 0, 0.18)); // Applique une ombre douce semi-transparente.
-        cardShadow.setRotate(-12); // Aligne l'ombre avec la rotation de la carte.
-        cardShadow.setTranslateX(16); // Décale légèrement l'ombre vers la droite.
-        cardShadow.setTranslateY(8); // Descend l'ombre pour simuler la profondeur.
-
-        Rectangle card = new Rectangle(138, 184); // Crée la carte blanche centrale.
-        card.setArcWidth(32); // Arrondit les coins pour correspondre au logo.
-        card.setArcHeight(32); // Applique le même arrondi verticalement.
-        card.setFill(Color.web("#fff7db")); // Utilise un blanc crème proche du visuel.
-        card.setStroke(Color.web("#0a6b3a")); // Ajoute un filet vert foncé autour de la carte.
-        card.setStrokeWidth(4); // Définit l'épaisseur du filet de la carte.
-        card.setRotate(-12); // Oriente la carte pour rappeler la perspective du logo.
-        card.setTranslateX(8); // Décale légèrement la carte vers la droite.
-        card.setTranslateY(-6); // Remonte la carte pour équilibrer la composition.
-
-        Polygon diamond = new Polygon(0.0, -26.0, 18.0, 0.0, 0.0, 26.0, -18.0, 0.0); // Crée le symbole de carre.
-        diamond.setFill(Color.web("#ff3c3c")); // Applique le rouge vif du carre.
-        diamond.setStroke(Color.web("#b02424")); // Ajoute un contour plus sombre autour du symbole.
-        diamond.setStrokeWidth(3); // Définit l'épaisseur du contour du carre.
-        diamond.setTranslateX(28); // Place le carre vers le coin supérieur droit de la carte.
-        diamond.setTranslateY(-46); // Positionne le carre dans la partie haute de la carte.
-        diamond.setRotate(-10); // Incline légèrement le carre comme sur le logo.
-
-        Circle clubTop = new Circle(0, -18, 14); // Crée le lobe supérieur du trèfle.
-        clubTop.setFill(Color.web("#0e743d")); // Applique la couleur verte du symbole.
-        Circle clubLeft = new Circle(-12, -2, 14); // Crée le lobe gauche du trèfle.
-        clubLeft.setFill(Color.web("#0e743d")); // Utilise la même teinte verte pour l'uniformité.
-        Circle clubRight = new Circle(12, -2, 14); // Crée le lobe droit du trèfle.
-        clubRight.setFill(Color.web("#0e743d")); // Applique la même couleur.
-        Rectangle clubStem = new Rectangle(-4, 10, 8, 22); // Crée la tige du trèfle.
-        clubStem.setArcWidth(6); // Arrondit légèrement la tige pour la douceur visuelle.
-        clubStem.setArcHeight(6); // Arrondit aussi la hauteur de la tige.
-        clubStem.setFill(Color.web("#0e743d")); // Applique la couleur verte au pied du trèfle.
-        Group club = new Group(clubTop, clubLeft, clubRight, clubStem); // Assemble les éléments du trèfle.
-        club.setTranslateX(-32); // Positionne le trèfle sur la carte.
-        club.setTranslateY(-34); // Remonte le trèfle vers le haut de la carte.
-        club.setRotate(-12); // Aligne le trèfle avec l'inclinaison générale.
-
-        Circle spadeTop = new Circle(0, -12, 12); // Crée la tête du pique.
-        spadeTop.setFill(Color.web("#0a5a32")); // Applique un vert sombre pour rappeler l'illustration.
-        Circle spadeLeft = new Circle(-10, 0, 10); // Crée le lobe gauche du pique.
-        spadeLeft.setFill(Color.web("#0a5a32")); // Utilise la même teinte sombre.
-        Circle spadeRight = new Circle(10, 0, 10); // Crée le lobe droit du pique.
-        spadeRight.setFill(Color.web("#0a5a32")); // Applique la même couleur sombre.
-        Polygon spadeStem = new Polygon(-7.0, 8.0, 7.0, 8.0, 0.0, 28.0); // Crée la tige triangulaire du pique.
-        spadeStem.setFill(Color.web("#0a5a32")); // Applique la teinte sombre à la tige.
-        Group spade = new Group(spadeTop, spadeLeft, spadeRight, spadeStem); // Assemble les éléments du pique.
-        spade.setTranslateX(18); // Positionne le pique vers le bas de la carte.
-        spade.setTranslateY(44); // Abaisse le symbole pour reproduire le visuel.
-        spade.setScaleX(0.92); // Réduit légèrement le pique horizontalement.
-        spade.setScaleY(0.92); // Réduit légèrement le pique verticalement.
-        spade.setRotate(-12); // Aligne le symbole sur la rotation générale de la carte.
-
-        Text wordBlack = new Text("BLACK"); // Crée la première ligne du titre.
-        wordBlack.setFont(Font.font("Arial Black", 30)); // Utilise une police épaisse proche de l'original.
-        wordBlack.setFill(Color.web("#fffbea")); // Applique un blanc cassé au texte.
-        wordBlack.setStroke(Color.web("#0c6b39")); // Ajoute un contour vert foncé autour des lettres.
-        wordBlack.setStrokeWidth(4); // Épaissit le contour pour rappeler l'effet outline.
-
-        Text wordJack = new Text("JACK"); // Crée la seconde ligne du titre.
-        wordJack.setFont(Font.font("Arial Black", 30)); // Utilise la même police pour la cohérence.
-        wordJack.setFill(Color.web("#fffbea")); // Applique la même couleur claire.
-        wordJack.setStroke(Color.web("#0c6b39")); // Ajoute le contour vert foncé.
-        wordJack.setStrokeWidth(4); // Définit l'épaisseur du contour du mot "JACK".
-        wordJack.setTranslateY(34); // Abaisse la seconde ligne pour créer la pile de texte.
-
-        Group title = new Group(wordBlack, wordJack); // Regroupe les deux mots pour les manipuler ensemble.
-        title.setTranslateX(-38); // Place le texte au centre de la carte.
-        title.setTranslateY(20); // Ajuste la hauteur du texte sur la carte.
-        title.setRotate(-12); // Oriente le texte pour suivre la carte inclinée.
-
-        Polygon star = new Polygon(0.0, -24.0, 6.4, -7.0, 22.0, -7.0, 9.0, 2.4, 14.4, 18.0, 0.0, 9.6, -14.4, 18.0, -9.0, 2.4, -22.0, -7.0, -6.4, -7.0); // Crée l'étoile jaune.
-        star.setFill(Color.web("#ffd84d")); // Applique la couleur dorée de l'étoile.
-        star.setStroke(Color.web("#0a6b3a")); // Ajoute un contour vert foncé comme sur le logo.
-        star.setStrokeWidth(3); // Définit l'épaisseur du contour de l'étoile.
-        star.setTranslateX(-72); // Place l'étoile vers le bord supérieur gauche.
-        star.setTranslateY(-100); // Remonte l'étoile au-dessus de la carte.
-        star.setRotate(-12); // Oriente légèrement l'étoile.
-
-        Circle chipOuter = new Circle(0, 0, 34); // Crée le disque extérieur du jeton.
-        chipOuter.setFill(Color.web("#ffd852")); // Applique la couleur jaune du jeton.
-        chipOuter.setStroke(Color.web("#0c6d39")); // Ajoute un contour vert autour du jeton.
-        chipOuter.setStrokeWidth(4); // Définit l'épaisseur du contour du jeton.
-
-        Circle chipInnerRing = new Circle(0, 0, 26); // Crée l'anneau vert interne du jeton.
-        chipInnerRing.setFill(Color.web("#0f773a")); // Applique un vert foncé à l'anneau.
-
-        Rectangle chipStripeHorizontal = new Rectangle(-30, -5, 60, 10); // Crée la bande horizontale claire du jeton.
-        chipStripeHorizontal.setArcWidth(10); // Adoucit les angles de la bande horizontale.
-        chipStripeHorizontal.setArcHeight(10); // Adoucit également la hauteur de la bande.
-        chipStripeHorizontal.setFill(Color.web("#fffbe5")); // Applique une teinte crème claire.
-
-        Rectangle chipStripeVertical = new Rectangle(-5, -30, 10, 60); // Crée la bande verticale claire du jeton.
-        chipStripeVertical.setArcWidth(10); // Arrondit les angles de la bande verticale.
-        chipStripeVertical.setArcHeight(10); // Arrondit aussi la hauteur.
-        chipStripeVertical.setFill(Color.web("#fffbe5")); // Utilise la même teinte claire.
-
-        Circle chipCore = new Circle(0, 0, 14); // Crée le centre clair du jeton.
-        chipCore.setFill(Color.web("#ffe99b")); // Applique un jaune pâle au cœur du jeton.
-
-        Group chip = new Group(chipOuter, chipInnerRing, chipStripeHorizontal, chipStripeVertical, chipCore); // Assemble le jeton décoratif.
-        chip.setTranslateX(84); // Positionne le jeton dans le coin inférieur droit.
-        chip.setTranslateY(70); // Abaisse légèrement le jeton pour équilibrer le badge.
-        chip.setRotate(-6); // Incline légèrement le jeton comme sur le visuel.
-
-        Circle highlight = new Circle(-34, -52, 38); // Crée un éclat clair sur le fond.
-        highlight.setFill(Color.rgb(255, 255, 255, 0.28)); // Applique une transparence pour simuler la lumière.
-        highlight.setRotate(-12); // Oriente l'éclat pour suivre la carte.
-
-        art.getChildren().addAll(outerBase, yellowBand, innerGreen, yellowAccent, highlight, cardShadow, card, club, diamond, spade, title, star, chip, outerRim); // Assemble toutes les formes dans l'ordre souhaité.
-        badge.getChildren().add(art); // Ajoute le groupe graphique dans le conteneur principal.
-        return badge; // Retourne le logo complet.
+        try { // Tente de charger la composition vectorielle décrite en FXML.
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/logo/logo.fxml")); // Prépare un loader pointant vers le dossier logo.
+            StackPane logoRoot = loader.load(); // Charge la hiérarchie de nœuds représentant le logo.
+            logoRoot.setMaxSize(200, 200); // Contraint la taille maximale pour garder un format stable.
+            logoRoot.setPrefSize(200, 200); // Définit la taille préférée pour l'intégration dans la carte.
+            badge.getChildren().add(logoRoot); // Ajoute le logo vectoriel centré dans le badge.
+        } catch (Exception loadError) { // Cas de repli si la ressource FXML est introuvable ou invalide.
+            Label fallback = new Label("BlackJack"); // Affiche un texte pour éviter un espace vide.
+            fallback.getStyleClass().addAll("login-brand-title", "login-logo-placeholder"); // Réutilise la typo de marque et une classe dédiée.
+            badge.getChildren().add(fallback); // Insère le texte de remplacement dans le conteneur.
+        }
+        return badge; // Retourne le conteneur prêt à être intégré.
     }
 
 

@@ -97,13 +97,7 @@ public class AppFX extends Application { // Classe principale JavaFX.
         branding.setMaxWidth(220); // Verrouille la largeur maximale pour garder un gabarit stable.
 
         StackPane logoBadge = buildLogoBadge(); // Construit le conteneur du logo importé.
-        Label brandTitle = new Label("BlackJack NC"); // Crée le titre de marque.
-        brandTitle.getStyleClass().add("login-brand-title"); // Applique le style typographique principal.
-        Label brandSubtitle = new Label("Entre dans le casino virtuel"); // Crée le slogan d'accroche.
-        brandSubtitle.getStyleClass().add("login-brand-subtitle"); // Applique le style secondaire.
-        brandSubtitle.setWrapText(true); // Autorise le passage à la ligne dans la colonne.
-        brandSubtitle.setMaxWidth(220); // Limite la largeur pour garder un aspect compact.
-        branding.getChildren().addAll(logoBadge, brandTitle, brandSubtitle); // Assemble la colonne de marque.
+        branding.getChildren().add(logoBadge); // Ajoute uniquement le logo sans texte additionnel.
         HBox.setHgrow(branding, Priority.NEVER); // Empêche l'agrandissement horizontal involontaire du bloc logo.
 
         VBox form = new VBox(14); // Crée la colonne de droite pour le formulaire avec un rythme plus serré.

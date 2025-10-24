@@ -325,6 +325,33 @@ public class AppFX extends Application { // Classe principale JavaFX.
             } catch (RuntimeException ex) { // Capture une erreur métier éventuelle.
                 message.setText("Erreur: " + ex.getMessage()); // Affiche l'erreur pour l'utilisateur.
             }
+            if (pseudo.isEmpty()) { // Vérifie que le pseudo est renseigné.
+                message.setText("Pseudo requis."); // Indique que le champ est obligatoire.
+                return; // Stoppe le traitement.
+            }
+            if (!p1.equals(p2) || p1.length() < 12 || !p1.matches(".*[A-Z].*") || !p1.matches(".*[a-z].*") || !p1.matches(".*\\d.*") || !p1.matches(".*[^A-Za-z0-9].*")) { // Valide la robustesse du mot de passe.
+                message.setText("Mot de passe trop faible."); // Affiche un message d'erreur.
+                return; // Annule la création.
+            }
+            try { // Tente l'enregistrement en base.
+                long id = database.createUser(email, pseudo, p1); // Appelle le service pour créer l'utilisateur.
+                userId = id; // Stocke l'identifiant nouvellement créé.
+                database.applyDailyCredit(userId); // Crédite immédiatement le bonus quotidien pour un compte fraîchement créé.
+                refreshBalance(); // Met à jour le solde initial après application du crédit quotidien.
+                betScene = buildBetScene(); // Prépare la scène de mise.
+                switchScene(betScene); // Dirige immédiatement vers la sélection de mise.
+            } catch (RuntimeException ex) { // Capture une erreur métier éventuelle.
+                message.setText("Erreur: " + ex.getMessage()); // Affiche l'erreur pour l'utilisateur.
+            }
+            if (!SecurityUtil.checkPwd(rawPwd, creds.hash())) { // Vérifie le mot de passe.
+                message.setText("Mot de passe incorrect."); // Informe de l'échec.
+                return; // Stoppe la procédure.
+            }
+            userId = creds.id(); // Mémorise l'identifiant.
+            database.applyDailyCredit(userId); // Déclenche le crédit quotidien.
+            refreshBalance(); // Met à jour le solde local.
+            betScene = buildBetScene(); // Construit la scène de mise.
+            switchScene(betScene); // Affiche la scène suivante.
         });
 
         btnBack.setOnAction(e -> { // Gère le retour vers la connexion.

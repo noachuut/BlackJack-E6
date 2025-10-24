@@ -12,6 +12,10 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <javafx.version>22.0.2</javafx.version>
+        <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
+        <app.main.class>org.example.AppFX</app.main.class>
+        <!-- Définit le type d'installeur généré par jpackage (exe ou msi). -->
+        <jpackage.type>exe</jpackage.type>
     </properties>
 
     <dependencies>
@@ -48,11 +52,42 @@
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
-                <version>0.0.8</version>
+                <version>${javafx.maven.plugin.version}</version>
                 <configuration>
-                    <!-- remplace par ton FQCN -->
-                    <mainClass>org.example.AppFX</mainClass>
+                    <mainClass>${app.main.class}</mainClass>
+                    <launcher>BlackJack</launcher>
+                    <stripDebug>true</stripDebug>
+                    <noManPages>true</noManPages>
+                    <noHeaderFiles>true</noHeaderFiles>
+                    <detectModules>true</detectModules>
+                    <jlinkImageName>blackjack-runtime</jlinkImageName>
+                    <jlinkZipName>blackjack-runtime</jlinkZipName>
+                    <jpackage>
+                        <type>${jpackage.type}</type>
+                        <name>BlackJack</name>
+                        <appVersion>${project.version}</appVersion>
+                        <vendor>BlackJack NC</vendor>
+                        <winMenu>true</winMenu>
+                        <winShortcut>true</winShortcut>
+                        <winUpgradeUuid>0dbe7a55-4f27-4d75-b915-98e4cfb7863e</winUpgradeUuid>
+                    </jpackage>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>create-runtime-image</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jlink</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>create-installer</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jpackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

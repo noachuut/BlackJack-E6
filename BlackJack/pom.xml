@@ -6,35 +6,43 @@
 
     <groupId>org.example</groupId>
     <artifactId>BlackJack</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <javafx.version>22.0.2</javafx.version>
-        <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
-        <app.main.class>org.example.AppFX</app.main.class>
-        <!-- Définit le type d'installeur généré par jpackage (exe ou msi). -->
-        <jpackage.type>exe</jpackage.type>
+        <main.class>org.example.AppFX</main.class>
     </properties>
 
     <dependencies>
-        <!-- prends ceux que tu utilises -->
+        <!-- JavaFX Windows (avec natives) -->
         <dependency>
             <groupId>org.openjfx</groupId>
-            <artifactId>javafx-controls</artifactId>
+            <artifactId>javafx-base</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
+            <classifier>win</classifier>
         </dependency>
+
+        <!-- Autres libs -->
         <dependency>
             <groupId>org.mindrot</groupId>
             <artifactId>jbcrypt</artifactId>
@@ -48,48 +56,133 @@
     </dependencies>
 
     <build>
+        <finalName>BlackJack-1.0.0</finalName>
         <plugins>
+
             <plugin>
-                <groupId>org.openjfx</groupId>
-                <artifactId>javafx-maven-plugin</artifactId>
-                <version>${javafx.maven.plugin.version}</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+
+                    <!-- 1) JavaFX Windows (classifier win) -->
+                    <execution>
+                        <id>copy-javafx-win</id>
+                        <phase>package</phase>
+                        <goals><goal>copy</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-base</artifactId>
+                                    <version>${javafx.version}</version>
+                                    <classifier>win</classifier>
+                                    <outputDirectory>${project.build.directory}/app/lib</outputDirectory>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-graphics</artifactId>
+                                    <version>${javafx.version}</version>
+                                    <classifier>win</classifier>
+                                    <outputDirectory>${project.build.directory}/app/lib</outputDirectory>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-controls</artifactId>
+                                    <version>${javafx.version}</version>
+                                    <classifier>win</classifier>
+                                    <outputDirectory>${project.build.directory}/app/lib</outputDirectory>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>org.openjfx</groupId>
+                                    <artifactId>javafx-fxml</artifactId>
+                                    <version>${javafx.version}</version>
+                                    <classifier>win</classifier>
+                                    <outputDirectory>${project.build.directory}/app/lib</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+
+                    <!-- 2) Le reste des deps runtime (sans org.openjfx) -->
+                    <execution>
+                        <id>copy-other-runtime-deps</id>
+                        <phase>package</phase>
+                        <goals><goal>copy-dependencies</goal></goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/app/lib</outputDirectory>
+                            <includeScope>runtime</includeScope>
+                            <excludeGroupIds>org.openjfx</excludeGroupIds>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-main-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>copy</goal></goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>${project.groupId}</groupId>
+                                    <artifactId>${project.artifactId}</artifactId>
+                                    <version>${project.version}</version>
+                                    <outputDirectory>${project.build.directory}/app</outputDirectory>
+                                    <destFileName>${project.build.finalName}.jar</destFileName>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
                 <configuration>
-                    <mainClass>${app.main.class}</mainClass>
-                    <launcher>BlackJack</launcher>
-                    <stripDebug>true</stripDebug>
-                    <noManPages>true</noManPages>
-                    <noHeaderFiles>true</noHeaderFiles>
-                    <detectModules>true</detectModules>
-                    <jlinkImageName>blackjack-runtime</jlinkImageName>
-                    <jlinkZipName>blackjack-runtime</jlinkZipName>
-                    <jpackage>
-                        <type>${jpackage.type}</type>
-                        <name>BlackJack</name>
-                        <appVersion>${project.version}</appVersion>
-                        <vendor>BlackJack NC</vendor>
-                        <winMenu>true</winMenu>
-                        <winShortcut>true</winShortcut>
-                        <winUpgradeUuid>0dbe7a55-4f27-4d75-b915-98e4cfb7863e</winUpgradeUuid>
-                    </jpackage>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>lib/</classpathPrefix>
+                            <mainClass>org.example.AppFX</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.panteleyev</groupId>
+                <artifactId>jpackage-maven-plugin</artifactId>
+                <version>1.7.1</version>
+                <configuration>
+                    <name>BlackJack</name>
+                    <appVersion>1.0.0</appVersion>
+                    <vendor>BTS SIO</vendor>
+
+                    <!-- IMPORTANT : dossier qui contient le JAR et le dossier lib/ -->
+                    <input>${project.build.directory}/app</input>
+                    <destination>${project.build.directory}/jpackage</destination>
+
+                    <mainJar>${project.build.finalName}.jar</mainJar>
+                    <mainClass>org.example.AppFX</mainClass>
+
+                    <type>MSI</type>
+                    <icon>${project.basedir}/src/main/resources/logo/logo.ico</icon>
+                    <winShortcut>true</winShortcut>
+
+                    <!-- >>> Les options JVM nécessaires à JavaFX <<< -->
+                    <javaOptions>
+                        <javaOption>--module-path</javaOption>
+                        <javaOption>$APPDIR/lib</javaOption>
+                        <javaOption>--add-modules</javaOption>
+                        <javaOption>javafx.controls,javafx.fxml,javafx.graphics,javafx.base</javaOption>
+                    </javaOptions>
                 </configuration>
                 <executions>
                     <execution>
-                        <id>create-runtime-image</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jlink</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>create-installer</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>jpackage</goal>
-                        </goals>
+                        <goals><goal>jpackage</goal></goals>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
     </build>
-
 </project>

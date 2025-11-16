@@ -48,3 +48,9 @@ Ce projet a été réalisé dans le cadre du BTS SIO SLAM afin de démontrer la 
 - JDBC  
 - Maven  
 - jpackage pour l’installeur Windows
+
+## Modèle Conceptuel de Données
+
+![Schéma relation ](BlackJack/mcd.png)
+
+

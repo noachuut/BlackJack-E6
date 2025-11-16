@@ -1,6 +1,6 @@
 # BlackjackNC
 
-![Aperçu du jeu](screenshot.png)
+![Aperçu du jeu](BlackJack/screenshot.png)
 
 ## Présentation du projet
 

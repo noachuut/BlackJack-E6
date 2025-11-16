@@ -579,7 +579,7 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         if (balance < minBet) {
             alert("Solde insuffisant (min 250 XPF).");
-     ²       return false;
+            return false;
         }
 
         if (currentBet > balance) {

@@ -51,8 +51,8 @@ public class AppFX extends Application { // Classe principale JavaFX.
     public void start(Stage primaryStage) { // Point d'entrée JavaFX.
         this.stage = primaryStage; // Conserve la référence de la fenêtre.
         stage.setTitle("Black Jack"); // Définit le titre de la fenêtre.
-        stage.setMinWidth(720); // Imose une largeur minimale.
-        stage.setMinHeight(480); // Imose une hauteur minimale.
+        stage.setMinWidth(960);   // taille minimum fenetre
+        stage.setMinHeight(600); // taille maximal fenetre
 
         Image tableImage = loadImage("/background/tapis.png"); // Charge le visuel du tapis.
         Image backImage = loadImage("/card/BACK.png"); // Charge l'image du dos de carte.
@@ -60,8 +60,10 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         loginScene = buildLoginScene(); // Construit la scène de connexion.
         stage.setScene(loginScene); // Affiche la scène initiale.
-        stage.setWidth(960); // Positionne une largeur plus généreuse pour révéler le décor.
-        stage.setHeight(640); // Ajuste la hauteur pour équilibrer la carte horizontale.
+
+
+        stage.setWidth(1280);     //
+        stage.setHeight(720); // Ajuste la hauteur pour équilibrer la carte horizontale.
         stage.centerOnScreen(); // Centre la fenêtre.
         stage.show(); // Affiche la fenêtre.
     }
@@ -354,6 +356,10 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         Label info = new Label(); // Label informatif sur le solde.
         updateBetInfo(info); // Initialise le texte avec le solde actuel.
+        Label error = new Label();
+        error.getStyleClass().add("error-label");
+        error.setVisible(false);
+
 
         int balance = balanceCached; // Récupère le solde courant.
         int minBet = 250; // Déclare la mise minimale.
@@ -363,14 +369,13 @@ public class AppFX extends Application { // Classe principale JavaFX.
 
         Button btnStart = new Button("Commencer"); // Bouton pour lancer la manche.
         btnStart.getStyleClass().add("btn-primary"); // Applique le style vert principal au bouton de démarrage.
-
-        root.getChildren().addAll(info, spinner, btnStart); // Assemble la scène.
+        root.getChildren().addAll(info, spinner, btnStart, error);// Assemble la scène.
 
         btnStart.setOnAction(e -> { // Action de démarrage.
             currentBet = spinner.getValue(); // Enregistre la mise choisie.
-            if (!ensureBetAffordable()) { // Vérifie que la mise est viable.
-                return; // Annule en cas d'impossibilité.
-            }
+            if (!ensureBetAffordable(error)){   // Vérifie que la mise est viable.
+                return;
+            } // Annule en cas d'impossibilité.
             startNewRound(); // Initialise une nouvelle manche.
             gameScene = buildGameScene(); // Construit la scène de jeu.
             switchScene(gameScene); // Affiche la scène.
@@ -547,19 +552,43 @@ public class AppFX extends Application { // Classe principale JavaFX.
         redrawGame(); // Met à jour l'affichage.
     }
 
-    private boolean ensureBetAffordable() { // Vérifie que la mise actuelle est compatible avec le solde.
-        int balance = balanceCached; // Récupère le solde.
-        int minBet = 250; // Mise minimale.
-        if (balance < minBet) { // Vérifie que le solde atteint le minimum.
-            alert("Solde insuffisant (min 250 XPF)."); // Affiche une alerte.
-            return false; // Interrompt le processus.
+    private boolean ensureBetAffordable(Label errorLabel) {
+        int balance = balanceCached;
+        int minBet = 250;
+
+        errorLabel.setVisible(false); // reset
+
+        if (balance < minBet) {
+            errorLabel.setText("Solde insuffisant (min 250 XPF).");
+            errorLabel.setVisible(true);
+            return false;
         }
-        if (currentBet > balance) { // Ajuste la mise si elle dépasse le solde.
-            currentBet = Math.max(minBet, (balance / 50) * 50); // Ajuste la mise au pas de 50.
-            alert("Mise ajustée à " + currentBet + " XPF."); // Informe le joueur.
+
+        if (currentBet > balance) {
+            currentBet = Math.max(minBet, (balance / 50) * 50);
+            errorLabel.setText("Mise ajustée à " + currentBet + " XPF.");
+            errorLabel.setVisible(true);
         }
-        return true; // La mise est acceptable.
+
+        return true;
     }
+
+    private boolean ensureBetAffordable() {
+        int balance = balanceCached;
+        int minBet = 250;
+
+        if (balance < minBet) {
+            alert("Solde insuffisant (min 250 XPF).");
+     ²       return false;
+        }
+
+        if (currentBet > balance) {
+            currentBet = Math.max(minBet, (balance / 50) * 50);
+            alert("Mise ajustée à " + currentBet + " XPF.");
+        }
+        return true;
+    }
+
 
     private void refreshBalance() { // Met à jour le solde en cache.
         balanceCached = database.getBalance(userId); // Interroge la base.

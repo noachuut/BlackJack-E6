@@ -125,5 +125,12 @@
 }
 .btn-close-small:hover { -fx-background-color: white; }
 
+.error-label {
+    -fx-text-fill: #ff5c5c;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+
 
 
